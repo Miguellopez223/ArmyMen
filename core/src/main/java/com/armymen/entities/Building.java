@@ -1,4 +1,4 @@
-package com.armymen.world;
+package com.armymen.entities;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;

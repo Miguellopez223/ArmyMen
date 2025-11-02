@@ -1,9 +1,10 @@
 package com.armymen.screens;
 
 import com.armymen.MainGame;
-import com.armymen.world.Building;
-import com.armymen.world.Bulldozer;
-import com.armymen.world.Unit;
+import com.armymen.entities.Building;
+import com.armymen.systems.ResourceManager;
+import com.armymen.entities.Bulldozer;
+import com.armymen.entities.Unit;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
@@ -16,6 +17,14 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.Input;
+import com.armymen.entities.Bulldozer;
+import com.armymen.entities.Bulldozer.BuildListener;
+import com.armymen.entities.Building;
+import com.armymen.systems.ResourceManager;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+
+
+
 
 public class GameScreen implements Screen {
 
@@ -33,6 +42,9 @@ public class GameScreen implements Screen {
     private Vector2 selectEnd = new Vector2();
     private Array<Building> buildings;
     private Bulldozer bulldozer;
+    private ResourceManager resourceManager;
+    private BitmapFont font = new BitmapFont();
+
 
 
     public GameScreen(MainGame game) {
@@ -43,6 +55,8 @@ public class GameScreen implements Screen {
         this.shape = new ShapeRenderer();
         this.buildings = new Array<>();
         bulldozer = new Bulldozer(new Vector2(500, 500));
+        resourceManager = new ResourceManager(200); // plástico inicial
+
 
         this.playerUnits = new Array<>();
         this.selectedUnits = new Array<>();
@@ -58,11 +72,23 @@ public class GameScreen implements Screen {
         buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
 
         playerUnits.add(bulldozer);
+
+        Bulldozer.setBuildListener(new Bulldozer.BuildListener() {
+            @Override
+            public void onBuildingCreated(Building building) {
+                buildings.add(building);
+            }
+        });
+
     }
 
     @Override
     public void render(float delta) {
         update(delta);
+
+        batch.begin();
+        font.draw(batch, "Plástico: " + resourceManager.getPlastic(), camera.position.x - 600, camera.position.y + 340);
+        batch.end();
 
         // fondo blanco
         Gdx.gl.glClearColor(1, 1, 1, 1);
@@ -176,41 +202,20 @@ public class GameScreen implements Screen {
             if (selectedUnits.size > 0) {
                 Vector2 dest = screenToWorld(Gdx.input.getX(), Gdx.input.getY());
 
-                // verificar si el único seleccionado es el bulldozer
                 if (selectedUnits.size == 1 && selectedUnits.first() instanceof Bulldozer) {
                     Bulldozer b = (Bulldozer) selectedUnits.first();
-
-                    // si no está construyendo, crear edificio
-                    if (!b.isConstructing()) {
-                        b.startConstruction();
-
-                        // verificar que no haya edificio en esa posición
-                        boolean canBuild = true;
-                        for (Building build : buildings) {
-                            if (build.getBounds().contains(dest)) {
-                                canBuild = false;
-                                break;
-                            }
-                        }
-
-                        if (canBuild) {
-                            buildings.add(new Building(new Vector2(dest), "building_storage.png"));
+                    boolean canBuild = true;
+                    for (Building build : buildings) {
+                        if (build.getBounds().contains(dest)) {
+                            canBuild = false;
+                            break;
                         }
                     }
-                } else {
-                    // movimiento normal (formación)
-                    float spacing = 50f;
-                    int cols = (int) Math.ceil(Math.sqrt(selectedUnits.size));
-                    int rows = cols;
-                    int i = 0;
-                    for (Unit u : selectedUnits) {
-                        int row = i / cols;
-                        int col = i % cols;
-                        float offsetX = (col - cols / 2f) * spacing;
-                        float offsetY = (row - rows / 2f) * spacing;
-                        Vector2 unitDest = new Vector2(dest.x + offsetX, dest.y + offsetY);
-                        u.setTarget(unitDest);
-                        i++;
+
+                    if (canBuild && resourceManager.spend(50)) { // cuesta 50 de plástico
+                        b.startConstruction(dest);
+                    } else {
+                        System.out.println("No hay suficiente plástico o el espacio está ocupado");
                     }
                 }
             }
