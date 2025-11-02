@@ -1,37 +1,32 @@
 package com.armymen.world;
 
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 
+/**
+ * Bulldozer con puntos de vida (más que un soldado).
+ * Puede recibir daño y morir.
+ */
 public class Bulldozer extends Unit {
 
-    private boolean constructing = false;
-    private float buildTimer = 0f;
-    private float buildTime = 3f; // tiempo en segundos para construir
+    // Asumiendo que un soldado ~100 HP, le damos "unos cuantos más"
+    private int maxHp = 180;
+    private int hp = maxHp;
 
-    public Bulldozer(Vector2 startPos) {
-        super(startPos);
-        this.setTexture(new Texture("bulldozer.png"));
+    public Bulldozer(Vector2 pos) {
+        super(pos);
     }
 
-    @Override
-    public void update(float delta) {
-        super.update(delta);
-
-        if (constructing) {
-            buildTimer += delta;
-            if (buildTimer >= buildTime) {
-                constructing = false;
-                buildTimer = 0f;
-            }
-        }
+    /** Aplica daño. Devuelve true si muere en esta llamada. */
+    public boolean takeDamage(int dmg) {
+        if (dmg < 0) dmg = 0;
+        hp -= dmg;
+        if (hp < 0) hp = 0;
+        return hp == 0;
     }
 
-    public boolean isConstructing() { return constructing; }
+    public int getHp() { return hp; }
+    public int getMaxHp() { return maxHp; }
 
-    public void startConstruction() {
-        constructing = true;
-        buildTimer = 0f;
-    }
+    /** Opcional: por si querés curarlo en algún evento. */
+    public void healToFull() { hp = maxHp; }
 }
