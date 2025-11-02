@@ -204,6 +204,7 @@ public class GameScreen implements Screen {
 
                 if (selectedUnits.size == 1 && selectedUnits.first() instanceof Bulldozer) {
                     Bulldozer b = (Bulldozer) selectedUnits.first();
+
                     boolean canBuild = true;
                     for (Building build : buildings) {
                         if (build.getBounds().contains(dest)) {
@@ -213,11 +214,12 @@ public class GameScreen implements Screen {
                     }
 
                     if (canBuild && resourceManager.spend(50)) { // cuesta 50 de plástico
-                        b.startConstruction(dest);
+                        b.orderBuild(dest); // 🚜 ahora primero irá al lugar y luego construirá
                     } else {
                         System.out.println("No hay suficiente plástico o el espacio está ocupado");
                     }
                 }
+
             }
         }
     }

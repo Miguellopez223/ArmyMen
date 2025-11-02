@@ -7,11 +7,12 @@ import com.badlogic.gdx.math.Vector2;
 
 public class Unit {
 
-    private Vector2 position;
-    private Vector2 target;
-    private float speed = 200f; // velocidad más alta
-    private float radius = 25f; // más grande para verlos
-    private Texture tex;
+    // Cambiar de 'private' → 'protected' para que Bulldozer y otras subclases puedan usarlo
+    protected Vector2 position;
+    protected Vector2 target;
+    protected float speed = 200f;
+    protected float radius = 25f;
+    protected Texture tex;
 
     public Unit(Vector2 startPos) {
         this.position = new Vector2(startPos);
@@ -33,7 +34,6 @@ public class Unit {
     }
 
     public void render(SpriteBatch batch) {
-        // Dibuja el soldado (32x32 -> lo hacemos más grande)
         if (tex != null) {
             batch.draw(tex, position.x - 20, position.y - 20, 40, 40);
         }
@@ -46,6 +46,8 @@ public class Unit {
     public void setTexture(Texture texture) {
         this.tex = texture;
     }
+
     public void setTarget(Vector2 target) { this.target.set(target); }
+
     public Vector2 getPosition() { return position; }
 }
