@@ -1,6 +1,7 @@
 package com.armymen.screens;
 
 import com.armymen.MainGame;
+import com.armymen.world.Building;
 import com.armymen.world.Unit;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -29,6 +30,7 @@ public class GameScreen implements Screen {
     private boolean selecting = false;
     private Vector2 selectStart = new Vector2();
     private Vector2 selectEnd = new Vector2();
+    private Array<Building> buildings;
 
     public GameScreen(MainGame game) {
         this.game = game;
@@ -36,6 +38,7 @@ public class GameScreen implements Screen {
         this.camera.setToOrtho(false, 1280, 720);
         this.batch = new SpriteBatch();
         this.shape = new ShapeRenderer();
+        this.buildings = new Array<>();
 
         this.playerUnits = new Array<>();
         this.selectedUnits = new Array<>();
@@ -46,6 +49,9 @@ public class GameScreen implements Screen {
         playerUnits.add(new Unit(new Vector2(800, 300)));
         playerUnits.add(new Unit(new Vector2(1000, 500)));
         playerUnits.add(new Unit(new Vector2(1200, 250)));
+
+        //crear edificios
+        buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
     }
 
     @Override
@@ -58,6 +64,10 @@ public class GameScreen implements Screen {
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+
+        for (Building b : buildings)
+            b.render(batch);
+
         for (Unit u : playerUnits)
             u.render(batch);
         batch.end();
@@ -87,6 +97,19 @@ public class GameScreen implements Screen {
 
         for (Unit u : playerUnits)
             u.update(delta);
+
+        for (Unit u : playerUnits) {
+            u.update(delta);
+
+            // Evitar que atraviese edificios
+            for (Building b : buildings) {
+                if (b.getBounds().contains(u.getPosition())) {
+                    // Empujar ligeramente hacia atrás
+                    Vector2 dir = new Vector2(u.getPosition()).sub(b.getPosition()).nor();
+                    u.getPosition().mulAdd(dir, 3f); // retrocede un poco
+                }
+            }
+        }
     }
 
     private void handleCamera(float delta) {
