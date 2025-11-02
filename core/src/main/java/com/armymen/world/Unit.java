@@ -43,6 +43,9 @@ public class Unit {
         return new Circle(position, radius).contains(point);
     }
 
+    public void setTexture(Texture texture) {
+        this.tex = texture;
+    }
     public void setTarget(Vector2 target) { this.target.set(target); }
     public Vector2 getPosition() { return position; }
 }

@@ -2,6 +2,7 @@ package com.armymen.screens;
 
 import com.armymen.MainGame;
 import com.armymen.world.Building;
+import com.armymen.world.Bulldozer;
 import com.armymen.world.Unit;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -31,6 +32,8 @@ public class GameScreen implements Screen {
     private Vector2 selectStart = new Vector2();
     private Vector2 selectEnd = new Vector2();
     private Array<Building> buildings;
+    private Bulldozer bulldozer;
+
 
     public GameScreen(MainGame game) {
         this.game = game;
@@ -39,6 +42,7 @@ public class GameScreen implements Screen {
         this.batch = new SpriteBatch();
         this.shape = new ShapeRenderer();
         this.buildings = new Array<>();
+        bulldozer = new Bulldozer(new Vector2(500, 500));
 
         this.playerUnits = new Array<>();
         this.selectedUnits = new Array<>();
@@ -52,6 +56,8 @@ public class GameScreen implements Screen {
 
         //crear edificios
         buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
+
+        playerUnits.add(bulldozer);
     }
 
     @Override
@@ -170,24 +176,42 @@ public class GameScreen implements Screen {
             if (selectedUnits.size > 0) {
                 Vector2 dest = screenToWorld(Gdx.input.getX(), Gdx.input.getY());
 
-                // separación entre unidades
-                float spacing = 50f;
+                // verificar si el único seleccionado es el bulldozer
+                if (selectedUnits.size == 1 && selectedUnits.first() instanceof Bulldozer) {
+                    Bulldozer b = (Bulldozer) selectedUnits.first();
 
-                // disposición en cuadrícula alrededor del punto destino
-                int cols = (int) Math.ceil(Math.sqrt(selectedUnits.size));
-                int rows = cols;
+                    // si no está construyendo, crear edificio
+                    if (!b.isConstructing()) {
+                        b.startConstruction();
 
-                int i = 0;
-                for (Unit u : selectedUnits) {
-                    int row = i / cols;
-                    int col = i % cols;
+                        // verificar que no haya edificio en esa posición
+                        boolean canBuild = true;
+                        for (Building build : buildings) {
+                            if (build.getBounds().contains(dest)) {
+                                canBuild = false;
+                                break;
+                            }
+                        }
 
-                    float offsetX = (col - cols / 2f) * spacing;
-                    float offsetY = (row - rows / 2f) * spacing;
-
-                    Vector2 unitDest = new Vector2(dest.x + offsetX, dest.y + offsetY);
-                    u.setTarget(unitDest);
-                    i++;
+                        if (canBuild) {
+                            buildings.add(new Building(new Vector2(dest), "building_storage.png"));
+                        }
+                    }
+                } else {
+                    // movimiento normal (formación)
+                    float spacing = 50f;
+                    int cols = (int) Math.ceil(Math.sqrt(selectedUnits.size));
+                    int rows = cols;
+                    int i = 0;
+                    for (Unit u : selectedUnits) {
+                        int row = i / cols;
+                        int col = i % cols;
+                        float offsetX = (col - cols / 2f) * spacing;
+                        float offsetY = (row - rows / 2f) * spacing;
+                        Vector2 unitDest = new Vector2(dest.x + offsetX, dest.y + offsetY);
+                        u.setTarget(unitDest);
+                        i++;
+                    }
                 }
             }
         }
