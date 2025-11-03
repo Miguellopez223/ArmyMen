@@ -58,10 +58,16 @@ public class PlasticTruck extends Unit {
                 actionTimer += delta;
                 if (actionTimer >= loadTime) {
                     actionTimer = 0f;
+
                     // Cargar hasta completar capacidad o agotar pila
                     int need = capacity - load;
                     int loaded = targetPile.take(need);
                     load += loaded;
+
+                    // Si la pila ya quedó vacía, la marcamos para eliminar
+                    if (!targetPile.hasMaterial()) {
+                        targetPile = null;
+                    }
 
                     // Elegir DEPOT para descargar
                     targetDepot = findNearestDepot(buildings);

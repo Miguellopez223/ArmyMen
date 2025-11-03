@@ -352,6 +352,13 @@ public class GameScreen implements Screen {
             }
         }
 
+        // --- Eliminar ToyPiles vacíos ---
+        for (int i = toyPiles.size - 1; i >= 0; i--) {
+            if (!toyPiles.get(i).hasMaterial()) {
+                toyPiles.removeIndex(i);
+            }
+        }
+
         // ======= Lógica de minas (mínima y clara) =======
         // Si unidad normal toca una mina -> explota, pierdes plástico y la mina desaparece.
         // Si es MineSweeper -> desactiva sin penalidad y ganas un bono pequeño.
