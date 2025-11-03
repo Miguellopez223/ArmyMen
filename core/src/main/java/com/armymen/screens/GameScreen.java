@@ -6,6 +6,8 @@ import com.armymen.entities.BuildingKind;
 import com.armymen.entities.Bulldozer;
 import com.armymen.entities.Unit;
 import com.armymen.systems.ResourceManager;
+import com.armymen.entities.Mine;
+import com.armymen.entities.MineSweeper;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -46,6 +48,7 @@ public class GameScreen implements Screen {
     private Array<Building> buildings;
     private Bulldozer bulldozer;
     private ResourceManager resourceManager;
+    private Array<Mine> mines;
 
     // === Selección con arrastre ===
     private boolean selecting = false;
@@ -73,6 +76,10 @@ public class GameScreen implements Screen {
         ENQUEUE_GAR_TRUCK, ENQUEUE_GAR_TANK
     }
 
+    // Penalidades/bonos simples
+    private final int MINE_PENALTY = 20;   // lo que te resta si explota
+    private final int DISARM_BONUS = 5;    // lo que ganas al desactivar con buscaminas
+
 
     public GameScreen(MainGame game) {
         this.game = game;
@@ -88,6 +95,14 @@ public class GameScreen implements Screen {
         this.playerUnits = new Array<>();
         this.selectedUnits = new Array<>();
         this.resourceManager = new ResourceManager(200); // plástico inicial
+
+        // ======= Minas iniciales (mínimo indispensable) =======
+        mines = new Array<>();
+        // Colocamos 4-5 minas fijas para probar (puedes mover posiciones a gusto)
+        mines.add(new Mine(new Vector2(650, 300)));
+        mines.add(new Mine(new Vector2(900, 420)));
+        mines.add(new Mine(new Vector2(1100, 360)));
+        mines.add(new Mine(new Vector2(750, 550)));
 
         // Entidades base
         bulldozer = new Bulldozer(new Vector2(500, 500));
@@ -267,14 +282,22 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // Dibujo del mundo
+        // === Dibujo del mundo (SpriteBatch) ===
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+
+        // 1) Edificios
         for (Building b : buildings) b.render(batch);
+
+        // 2) Minas (debes dibujarlas dentro del batch)
+        for (Mine m : mines) m.render(batch);
+
+        // 3) Unidades
         for (Unit u : playerUnits) u.render(batch);
+
         batch.end();
 
-        // Rectángulo de selección (mientras arrastras)
+        // === Overlay de selección (ShapeRenderer) ===
         if (selecting) {
             shape.setProjectionMatrix(camera.combined);
             shape.begin(ShapeRenderer.ShapeType.Line);
@@ -292,7 +315,7 @@ public class GameScreen implements Screen {
             shape.circle(u.getPosition().x, u.getPosition().y, 25);
         shape.end();
 
-        // UI
+        // === UI ===
         stage.act(delta);
         stage.draw();
     }
@@ -303,19 +326,51 @@ public class GameScreen implements Screen {
 
         for (Unit u : playerUnits) u.update(delta);
 
-        // Evitar atravesar edificios (empujón suave)
+        // Empujón suave contra edificios (como ya lo tienes)
         for (Unit u : playerUnits) {
             for (Building b : buildings) {
                 if (b.getBounds().contains(u.getPosition())) {
                     Vector2 dir = new Vector2(u.getPosition()).sub(b.getPosition()).nor();
-                    u.getPosition().mulAdd(dir, 3f); // retrocede un poco
+                    u.getPosition().mulAdd(dir, 3f);
                 }
             }
         }
 
-        // Actualizar HUD
+        // ======= Lógica de minas (mínima y clara) =======
+        // Si unidad normal toca una mina -> explota, pierdes plástico y la mina desaparece.
+        // Si es MineSweeper -> desactiva sin penalidad y ganas un bono pequeño.
+        for (int i = mines.size - 1; i >= 0; i--) {
+            Mine m = mines.get(i);
+            boolean removed = false;
+
+            for (int j = 0; j < playerUnits.size; j++) {
+                Unit u = playerUnits.get(j);
+                float dist = u.getPosition().dst(m.getPosition());
+
+                if (dist <= m.getRadius()) {
+                    if (u instanceof MineSweeper) {
+                        // Desactivar
+                        resourceManager.add(DISARM_BONUS);
+                        mines.removeIndex(i);
+                        removed = true;
+                    } else {
+                        // Explota: restar plástico (hasta donde alcance)
+                        int available = resourceManager.getPlastic();
+                        int toSpend = Math.min(MINE_PENALTY, available);
+                        if (toSpend > 0) resourceManager.spend(toSpend);
+                        mines.removeIndex(i);
+                        removed = true;
+                    }
+                    break; // ya removimos esta mina, salir del loop de unidades
+                }
+            }
+            if (removed) continue;
+        }
+
+        // HUD
         plasticLabel.setText("Plástico: " + resourceManager.getPlastic());
 
+        // Edificios (incluye ingreso pasivo del DEPOT y colas de HQ/GARAGE)
         for (Building b : buildings) {
             b.update(delta, playerUnits, resourceManager);
         }

@@ -2,6 +2,8 @@ package com.armymen.entities;
 
 import com.armymen.systems.CreationQueue;
 import com.armymen.systems.ResourceManager;
+import com.armymen.entities.MineSweeper;
+
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
@@ -37,6 +39,7 @@ public class Building {
     // Solo HQ y GARAGE usan cola
     private CreationQueue queue = null;
     private float creationTimer = 0f;
+    private float incomeTimer = 0f;
 
     public Building(Vector2 position, String texturePath) {
         this(position, texturePath, BuildingKind.DEPOT);
@@ -58,22 +61,30 @@ public class Building {
     }
 
     public void update(float dt, Array<Unit> allUnits, ResourceManager rm) {
-        if (queue == null) return; // depósitos no producen
+        // ===== Economía pasiva de DEPOT =====
+        if (kind == BuildingKind.DEPOT) {
+            incomeTimer += dt;
+            if (incomeTimer >= 1.0f) {
+                rm.add(5);           // +5 plástico por segundo por DEPOT
+                incomeTimer = 0f;
+            }
+            // DEPOT no produce unidades, así que terminamos aquí.
+            return;
+        }
+
+        if (queue == null) return; // HQ y GARAGE sí producen con cola
 
         if (creationTimer > 0f) {
             creationTimer -= dt;
             if (creationTimer <= 0f) {
-                // Timer terminó: intentar crear usando el primer pedido si hay recursos
                 tryCreateOne(allUnits, rm);
             }
             return;
         }
 
-        // Si no hay producción en curso, intenta empezar la siguiente si hay recursos
         if (queue.hasOrders()) {
             String next = queue.peek();
             if (hasResourcesFor(next, rm)) {
-                // Cobrar al inicio de la producción
                 spendFor(next, rm);
                 creationTimer = timeFor(next);
             }
@@ -107,16 +118,15 @@ public class Building {
         if (!queue.hasOrders()) return;
         String type = queue.peek();
 
-        // Crear unidad simple (si no tienes sprites, todas usan soldier.png)
         Vector2 spawn = new Vector2(position.x + 50, position.y + 50);
         Unit u;
         if (type.equals("SOLDIER")) {
             u = new Unit(spawn);
         } else if (type.equals("SWEEPER")) {
-            u = new Unit(spawn);     // placeholder; luego puedes hacer una subclase MineSweeper
-            u.setTexture(new Texture("soldier.png"));
+            // AHORA sí creamos la subclase buscaminas
+            u = new MineSweeper(spawn);
         } else if (type.equals("TRUCK")) {
-            u = new Unit(spawn);     // placeholder; luego harás Truck con lógica de recolección
+            u = new Unit(spawn); // placeholder
             u.setTexture(new Texture("soldier.png"));
         } else { // TANK
             u = new Unit(spawn);
@@ -124,8 +134,8 @@ public class Building {
         }
         allUnits.add(u);
 
-        queue.poll();        // sacar de la cola
-        creationTimer = 0f;  // listo para siguiente
+        queue.poll();
+        creationTimer = 0f;
     }
 
     // --- API cola ---
