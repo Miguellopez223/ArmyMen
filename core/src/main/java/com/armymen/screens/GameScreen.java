@@ -1,13 +1,9 @@
 package com.armymen.screens;
 
 import com.armymen.MainGame;
-import com.armymen.entities.Building;
-import com.armymen.entities.BuildingKind;
-import com.armymen.entities.Bulldozer;
-import com.armymen.entities.Unit;
+import com.armymen.entities.*;
 import com.armymen.systems.ResourceManager;
-import com.armymen.entities.Mine;
-import com.armymen.entities.MineSweeper;
+import com.armymen.entities.PlasticTruck;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -49,6 +45,8 @@ public class GameScreen implements Screen {
     private Bulldozer bulldozer;
     private ResourceManager resourceManager;
     private Array<Mine> mines;
+    private Array<ToyPile> toyPiles;
+
 
     // === Selección con arrastre ===
     private boolean selecting = false;
@@ -117,6 +115,12 @@ public class GameScreen implements Screen {
 
         // Un edificio de ejemplo
         buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
+
+        // ====== ToyPiles (fuentes de plástico para volquetas) ======
+        toyPiles = new Array<>();
+        toyPiles.add(new ToyPile(new Vector2(500, 250), 120));
+        toyPiles.add(new ToyPile(new Vector2(900, 520), 200));
+        toyPiles.add(new ToyPile(new Vector2(1300, 380), 160));
 
         // Listener de construcción del bulldozer
         Bulldozer.setBuildListener(new Bulldozer.BuildListener() {
@@ -289,10 +293,13 @@ public class GameScreen implements Screen {
         // 1) Edificios
         for (Building b : buildings) b.render(batch);
 
-        // 2) Minas (debes dibujarlas dentro del batch)
+        // 2) ToyPiles
+        for (ToyPile p : toyPiles) p.render(batch);
+
+        // 3) Minas
         for (Mine m : mines) m.render(batch);
 
-        // 3) Unidades
+        // 4) Unidades
         for (Unit u : playerUnits) u.render(batch);
 
         batch.end();
@@ -333,6 +340,15 @@ public class GameScreen implements Screen {
                     Vector2 dir = new Vector2(u.getPosition()).sub(b.getPosition()).nor();
                     u.getPosition().mulAdd(dir, 3f);
                 }
+            }
+        }
+
+        // Lógica de economía para volquetas
+        for (int i = 0; i < playerUnits.size; i++) {
+            Unit u = playerUnits.get(i);
+            if (u instanceof PlasticTruck) {
+                PlasticTruck t = (PlasticTruck) u;
+                t.updateEconomy(delta, toyPiles, buildings, resourceManager);
             }
         }
 

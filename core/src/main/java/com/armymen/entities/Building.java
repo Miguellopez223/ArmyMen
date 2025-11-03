@@ -3,6 +3,8 @@ package com.armymen.entities;
 import com.armymen.systems.CreationQueue;
 import com.armymen.systems.ResourceManager;
 import com.armymen.entities.MineSweeper;
+import com.armymen.entities.PlasticTruck;
+
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -125,9 +127,10 @@ public class Building {
         } else if (type.equals("SWEEPER")) {
             // AHORA sí creamos la subclase buscaminas
             u = new MineSweeper(spawn);
+            // Dentro de Building.tryCreateOne(...)
         } else if (type.equals("TRUCK")) {
-            u = new Unit(spawn); // placeholder
-            u.setTexture(new Texture("soldier.png"));
+            // Crear volqueta que transporta plástico
+            u = new PlasticTruck(spawn);
         } else { // TANK
             u = new Unit(spawn);
             u.setTexture(new Texture("soldier.png"));
