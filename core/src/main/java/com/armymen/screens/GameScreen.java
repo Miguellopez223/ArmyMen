@@ -197,11 +197,12 @@ public class GameScreen implements Screen {
             }
         }
 
-        // clic derecho: mover todos los seleccionados
+        // clic derecho: mover o construir
         if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
             if (selectedUnits.size > 0) {
                 Vector2 dest = screenToWorld(Gdx.input.getX(), Gdx.input.getY());
 
+                // Caso especial: si es un solo Bulldozer → construir
                 if (selectedUnits.size == 1 && selectedUnits.first() instanceof Bulldozer) {
                     Bulldozer b = (Bulldozer) selectedUnits.first();
 
@@ -213,13 +214,21 @@ public class GameScreen implements Screen {
                         }
                     }
 
-                    if (canBuild && resourceManager.spend(50)) { // cuesta 50 de plástico
-                        b.orderBuild(dest); // 🚜 ahora primero irá al lugar y luego construirá
+                    if (canBuild && resourceManager.spend(50)) {
+                        b.orderBuild(dest); // 🚜 bulldozer va al sitio y construye
                     } else {
                         System.out.println("No hay suficiente plástico o el espacio está ocupado");
                     }
-                }
 
+                } else {
+                    // 🚶 Los demás soldados se mueven en formación
+                    int i = 0;
+                    for (Unit u : selectedUnits) {
+                        Vector2 offset = new Vector2((i % 3) * 40 - 40, (i / 3) * 40 - 40);
+                        u.setTarget(dest.cpy().add(offset));
+                        i++;
+                    }
+                }
             }
         }
     }
