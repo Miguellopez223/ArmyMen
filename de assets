@@ -1,0 +1,593 @@
+[1mdiff --git a/core/assets/building_garage.png b/core/assets/building_garage.png[m
+[1mdeleted file mode 100644[m
+[1mindex 385dc96..0000000[m
+Binary files a/core/assets/building_garage.png and /dev/null differ
+[1mdiff --git a/core/assets/building_hq.png b/core/assets/building_hq.png[m
+[1mdeleted file mode 100644[m
+[1mindex bade689..0000000[m
+Binary files a/core/assets/building_hq.png and /dev/null differ
+[1mdiff --git a/core/assets/building_storage.png b/core/assets/building_storage.png[m
+[1mindex 715aa65..5927242 100644[m
+Binary files a/core/assets/building_storage.png and b/core/assets/building_storage.png differ
+[1mdiff --git a/core/assets/fortin.png b/core/assets/fortin.png[m
+[1mdeleted file mode 100644[m
+[1mindex 9320ea6..0000000[m
+Binary files a/core/assets/fortin.png and /dev/null differ
+[1mdiff --git a/core/assets/mine.png b/core/assets/mine.png[m
+[1mdeleted file mode 100644[m
+[1mindex 5e219cd..0000000[m
+Binary files a/core/assets/mine.png and /dev/null differ
+[1mdiff --git a/core/assets/mine_sweeper.png b/core/assets/mine_sweeper.png[m
+[1mdeleted file mode 100644[m
+[1mindex f831e76..0000000[m
+Binary files a/core/assets/mine_sweeper.png and /dev/null differ
+[1mdiff --git a/core/assets/tank.png b/core/assets/tank.png[m
+[1mdeleted file mode 100644[m
+[1mindex 2902790..0000000[m
+Binary files a/core/assets/tank.png and /dev/null differ
+[1mdiff --git a/core/assets/toy_pile.png b/core/assets/toy_pile.png[m
+[1mdeleted file mode 100644[m
+[1mindex 9f28460..0000000[m
+Binary files a/core/assets/toy_pile.png and /dev/null differ
+[1mdiff --git a/core/assets/truck.png b/core/assets/truck.png[m
+[1mdeleted file mode 100644[m
+[1mindex efa9793..0000000[m
+Binary files a/core/assets/truck.png and /dev/null differ
+[1mdiff --git a/core/src/main/java/com/armymen/entities/Building.java b/core/src/main/java/com/armymen/entities/Building.java[m
+[1mindex a358639..7b10db0 100644[m
+[1m--- a/core/src/main/java/com/armymen/entities/Building.java[m
+[1m+++ b/core/src/main/java/com/armymen/entities/Building.java[m
+[36m@@ -1,139 +1,31 @@[m
+ package com.armymen.entities;[m
+ [m
+[31m-import com.armymen.systems.CreationQueue;[m
+[31m-import com.armymen.systems.ResourceManager;[m
+ import com.badlogic.gdx.graphics.Texture;[m
+ import com.badlogic.gdx.graphics.g2d.SpriteBatch;[m
+ import com.badlogic.gdx.math.Rectangle;[m
+ import com.badlogic.gdx.math.Vector2;[m
+[31m-import com.badlogic.gdx.utils.Array;[m
+ [m
+ public class Building {[m
+ [m
+[31m-    // --- Config costos y tiempos (ajústalos si quieres)[m
+[31m-    public static final int COST_HQ = 100;[m
+[31m-    public static final int COST_DEPOT = 50;[m
+[31m-    public static final int COST_GARAGE = 120;[m
+[31m-[m
+[31m-    // Unidades (costos/tiempos)[m
+[31m-    public static final int COST_SOLDIER = 30;[m
+[31m-    public static final float TIME_SOLDIER = 1.0f;[m
+[31m-[m
+[31m-    public static final int COST_SWEEPER = 40;[m
+[31m-    public static final float TIME_SWEEPER = 1.2f;[m
+[31m-[m
+[31m-    public static final int COST_TRUCK = 50;[m
+[31m-    public static final float TIME_TRUCK = 1.2f;[m
+[31m-[m
+[31m-    public static final int COST_TANK = 90;[m
+[31m-    public static final float TIME_TANK = 1.6f;[m
+[31m-[m
+     private Vector2 position;[m
+     private Texture texture;[m
+     private Rectangle bounds;[m
+ [m
+[31m-    private BuildingKind kind;[m
+[31m-[m
+[31m-    // Solo HQ y GARAGE usan cola[m
+[31m-    private CreationQueue queue = null;[m
+[31m-    private float creationTimer = 0f;[m
+[31m-[m
+     public Building(Vector2 position, String texturePath) {[m
+[31m-        this(position, texturePath, BuildingKind.DEPOT);[m
+[31m-    }[m
+[31m-[m
+[31m-    public Building(Vector2 position, String texturePath, BuildingKind kind) {[m
+         this.position = position;[m
+         this.texture = new Texture(texturePath);[m
+[31m-        this.bounds = new Rectangle(position.x - 40, position.y - 40, 80, 80);[m
+[31m-        this.kind = kind;[m
+[31m-[m
+[31m-        if (kind == BuildingKind.HQ || kind == BuildingKind.GARAGE) {[m
+[31m-            queue = new CreationQueue();[m
+[31m-        }[m
+[32m+[m[32m        this.bounds = new Rectangle(position.x - 40, position.y - 40, 80, 80); // tamaño base[m
+     }[m
+ [m
+     public void render(SpriteBatch batch) {[m
+         batch.draw(texture, position.x - 40, position.y - 40, 80, 80);[m
+     }[m
+ [m
+[31m-    public void update(float dt, Array<Unit> allUnits, ResourceManager rm) {[m
+[31m-        if (queue == null) return; // depósitos no producen[m
+[31m-[m
+[31m-        if (creationTimer > 0f) {[m
+[31m-            creationTimer -= dt;[m
+[31m-            if (creationTimer <= 0f) {[m
+[31m-                // Timer terminó: intentar crear usando el primer pedido si hay recursos[m
+[31m-                tryCreateOne(allUnits, rm);[m
+[31m-            }[m
+[31m-            return;[m
+[31m-        }[m
+[31m-[m
+[31m-        // Si no hay producción en curso, intenta empezar la siguiente si hay recursos[m
+[31m-        if (queue.hasOrders()) {[m
+[31m-            String next = queue.peek();[m
+[31m-            if (hasResourcesFor(next, rm)) {[m
+[31m-                // Cobrar al inicio de la producción[m
+[31m-                spendFor(next, rm);[m
+[31m-                creationTimer = timeFor(next);[m
+[31m-            }[m
+[31m-        }[m
+[31m-    }[m
+[31m-[m
+[31m-    private boolean hasResourcesFor(String type, ResourceManager rm) {[m
+[31m-        if (type.equals("SOLDIER")) return rm.getPlastic() >= COST_SOLDIER;[m
+[31m-        if (type.equals("SWEEPER")) return rm.getPlastic() >= COST_SWEEPER;[m
+[31m-        if (type.equals("TRUCK"))   return rm.getPlastic() >= COST_TRUCK;[m
+[31m-        if (type.equals("TANK"))    return rm.getPlastic() >= COST_TANK;[m
+[31m-        return false;[m
+[32m+[m[32m    public Rectangle getBounds() {[m
+[32m+[m[32m        return bounds;[m
+     }[m
+ [m
+[31m-    private void spendFor(String type, ResourceManager rm) {[m
+[31m-        if (type.equals("SOLDIER")) rm.spend(COST_SOLDIER);[m
+[31m-        else if (type.equals("SWEEPER")) rm.spend(COST_SWEEPER);[m
+[31m-        else if (type.equals("TRUCK")) rm.spend(COST_TRUCK);[m
+[31m-        else if (type.equals("TANK")) rm.spend(COST_TANK);[m
+[32m+[m[32m    public Vector2 getPosition() {[m
+[32m+[m[32m        return position;[m
+     }[m
+[31m-[m
+[31m-    private float timeFor(String type) {[m
+[31m-        if (type.equals("SOLDIER")) return TIME_SOLDIER;[m
+[31m-        if (type.equals("SWEEPER")) return TIME_SWEEPER;[m
+[31m-        if (type.equals("TRUCK"))   return TIME_TRUCK;[m
+[31m-        if (type.equals("TANK"))    return TIME_TANK;[m
+[31m-        return 1.0f;[m
+[31m-    }[m
+[31m-[m
+[31m-    private void tryCreateOne(Array<Unit> allUnits, ResourceManager rm) {[m
+[31m-        if (!queue.hasOrders()) return;[m
+[31m-        String type = queue.peek();[m
+[31m-[m
+[31m-        // Crear unidad simple (si no tienes sprites, todas usan soldier.png)[m
+[31m-        Vector2 spawn = new Vector2(position.x + 50, position.y + 50);[m
+[31m-        Unit u;[m
+[31m-        if (type.equals("SOLDIER")) {[m
+[31m-            u = new Unit(spawn);[m
+[31m-        } else if (type.equals("SWEEPER")) {[m
+[31m-            u = new Unit(spawn);     // placeholder; luego puedes hacer una subclase MineSweeper[m
+[31m-            u.setTexture(new Texture("soldier.png"));[m
+[31m-        } else if (type.equals("TRUCK")) {[m
+[31m-            u = new Unit(spawn);     // placeholder; luego harás Truck con lógica de recolección[m
+[31m-            u.setTexture(new Texture("soldier.png"));[m
+[31m-        } else { // TANK[m
+[31m-            u = new Unit(spawn);[m
+[31m-            u.setTexture(new Texture("soldier.png"));[m
+[31m-        }[m
+[31m-        allUnits.add(u);[m
+[31m-[m
+[31m-        queue.poll();        // sacar de la cola[m
+[31m-        creationTimer = 0f;  // listo para siguiente[m
+[31m-    }[m
+[31m-[m
+[31m-    // --- API cola ---[m
+[31m-    public boolean hasQueue() { return queue != null; }[m
+[31m-    public CreationQueue getQueue() { return queue; }[m
+[31m-[m
+[31m-    // --- Getters ---[m
+[31m-    public Rectangle getBounds() { return bounds; }[m
+[31m-    public Vector2 getPosition() { return position; }[m
+[31m-    public BuildingKind getKind() { return kind; }[m
+ }[m
+[1mdiff --git a/core/src/main/java/com/armymen/entities/BuildingKind.java b/core/src/main/java/com/armymen/entities/BuildingKind.java[m
+[1mdeleted file mode 100644[m
+[1mindex c0a9931..0000000[m
+[1m--- a/core/src/main/java/com/armymen/entities/BuildingKind.java[m
+[1m+++ /dev/null[m
+[36m@@ -1,7 +0,0 @@[m
+[31m-package com.armymen.entities;[m
+[31m-[m
+[31m-public enum BuildingKind {[m
+[31m-    HQ,        // cuartel general (crea soldados / buscaminas)[m
+[31m-    DEPOT,     // depósito de plástico[m
+[31m-    GARAGE     // garaje (crea volquetas / tanques)[m
+[31m-}[m
+[1mdiff --git a/core/src/main/java/com/armymen/entities/Bulldozer.java b/core/src/main/java/com/armymen/entities/Bulldozer.java[m
+[1mindex 3f288c1..2e0cd69 100644[m
+[1m--- a/core/src/main/java/com/armymen/entities/Bulldozer.java[m
+[1m+++ b/core/src/main/java/com/armymen/entities/Bulldozer.java[m
+[36m@@ -2,17 +2,15 @@[m [mpackage com.armymen.entities;[m
+ [m
+ import com.badlogic.gdx.graphics.Texture;[m
+ import com.badlogic.gdx.math.Vector2;[m
+[31m-import com.armymen.entities.BuildingKind;[m
+ [m
+ public class Bulldozer extends Unit {[m
+ [m
+[31m-    private boolean constructing = false;[m
+[31m-    private boolean movingToBuild = false;[m
+[32m+[m[32m    private boolean constructing = false;   // si está construyendo actualmente[m
+[32m+[m[32m    private boolean movingToBuild = false;  // si está yendo al lugar de construcción[m
+     private float buildTimer = 0f;[m
+[31m-    private float buildTime = 3f;[m
+[31m-    private Vector2 pendingBuildPos;[m
+[31m-    private Vector2 buildApproachPos;[m
+[31m-    private BuildingKind pendingKind = BuildingKind.DEPOT; // NUEVO[m
+[32m+[m[32m    private float buildTime = 3f;           // segundos para construir[m
+[32m+[m[32m    private Vector2 pendingBuildPos;        // posición real del edificio[m
+[32m+[m[32m    private Vector2 buildApproachPos;       // posición donde el bulldozer se detiene[m
+ [m
+     private static BuildListener buildListener;[m
+ [m
+[36m@@ -24,12 +22,16 @@[m [mpublic class Bulldozer extends Unit {[m
+     @Override[m
+     public void update(float delta) {[m
+         super.update(delta);[m
+[32m+[m
+[32m+[m[32m        // Si está yendo al lugar de construcción[m
+         if (movingToBuild && buildApproachPos != null) {[m
+[31m-            if (position.dst(buildApproachPos) < 8f) {[m
+[32m+[m[32m            if (position.dst(buildApproachPos) < 8f) { // llegó a su punto de parada[m
+                 movingToBuild = false;[m
+[31m-                startBuilding();[m
+[32m+[m[32m                startBuilding(); // comienza la construcción[m
+             }[m
+         }[m
+[32m+[m
+[32m+[m[32m        // Si está construyendo[m
+         if (constructing) {[m
+             buildTimer += delta;[m
+             if (buildTimer >= buildTime) {[m
+[36m@@ -40,32 +42,30 @@[m [mpublic class Bulldozer extends Unit {[m
+         }[m
+     }[m
+ [m
+[31m-    /** Orden de construir un tipo de edificio en pos */[m
+[31m-    public void orderBuild(Vector2 pos, BuildingKind kind) {[m
+[32m+[m[32m    /** Llamado desde GameScreen cuando se da la orden de construir */[m
+[32m+[m[32m    public void orderBuild(Vector2 pos) {[m
+         if (!constructing && !movingToBuild) {[m
+[31m-            pendingBuildPos = pos.cpy();[m
+[31m-            pendingKind = kind;               // NUEVO[m
+[32m+[m[32m            pendingBuildPos = pos.cpy(); // donde irá el edificio[m
+[32m+[m
+[32m+[m[32m            // Calcular punto de parada un poco más abajo (80 px)[m
+             buildApproachPos = new Vector2(pos.x, pos.y - 80);[m
+[32m+[m
+             setTarget(buildApproachPos);[m
+             movingToBuild = true;[m
+         }[m
+     }[m
+ [m
+[32m+[m[32m    /** Empieza la construcción cuando llega al destino */[m
+     private void startBuilding() {[m
+         constructing = true;[m
+         buildTimer = 0f;[m
+     }[m
+ [m
+[32m+[m[32m    /** Termina la construcción y crea el edificio */[m
+     private void finishBuilding() {[m
+         if (pendingBuildPos != null && buildListener != null) {[m
+[31m-            String tex = "building_storage.png";[m
+[31m-            if (pendingKind == BuildingKind.HQ) tex = "building_hq.png";[m
+[31m-            else if (pendingKind == BuildingKind.GARAGE) tex = "building_garage.png";[m
+[31m-            else tex = "building_storage.png"; // DEPOT por defecto[m
+[31m-[m
+[31m-            Building newBuilding = new Building(pendingBuildPos, tex, pendingKind);[m
+[32m+[m[32m            Building newBuilding = new Building(pendingBuildPos, "building_storage.png");[m
+             buildListener.onBuildingCreated(newBuilding);[m
+[31m-[m
+             pendingBuildPos = null;[m
+             buildApproachPos = null;[m
+         }[m
+[36m@@ -73,9 +73,11 @@[m [mpublic class Bulldozer extends Unit {[m
+ [m
+     public boolean isConstructing() { return constructing; }[m
+ [m
+[32m+[m[32m    // --- Sistema de listener para notificar al GameScreen ---[m
+     public interface BuildListener {[m
+         void onBuildingCreated(Building building);[m
+     }[m
+[32m+[m
+     public static void setBuildListener(BuildListener listener) {[m
+         buildListener = listener;[m
+     }[m
+[1mdiff --git a/core/src/main/java/com/armymen/screens/GameScreen.java b/core/src/main/java/com/armymen/screens/GameScreen.java[m
+[1mindex cd3621e..c4c4bc0 100644[m
+[1m--- a/core/src/main/java/com/armymen/screens/GameScreen.java[m
+[1m+++ b/core/src/main/java/com/armymen/screens/GameScreen.java[m
+[36m@@ -2,7 +2,6 @@[m [mpackage com.armymen.screens;[m
+ [m
+ import com.armymen.MainGame;[m
+ import com.armymen.entities.Building;[m
+[31m-import com.armymen.entities.BuildingKind;[m
+ import com.armymen.entities.Bulldozer;[m
+ import com.armymen.entities.Unit;[m
+ import com.armymen.systems.ResourceManager;[m
+[36m@@ -59,21 +58,9 @@[m [mpublic class GameScreen implements Screen {[m
+     private Label modeLabel;[m
+ [m
+     // Modo simple de acción (evitamos tocar muchas cosas)[m
+[31m-//    private enum ActionMode { NONE, BUILD_STORAGE }[m
+[31m-//    private ActionMode actionMode = ActionMode.NONE;[m
+[31m-    //private enum ActionMode { NONE, BUILD_HQ, BUILD_DEPOT, BUILD_GARAGE, ENQUEUE_HQ_SOLDIER, ENQUEUE_HQ_SWEEPER, ENQUEUE_GAR_TRUCK, ENQUEUE_GAR_TANK }[m
+[32m+[m[32m    private enum ActionMode { NONE, BUILD_STORAGE }[m
+     private ActionMode actionMode = ActionMode.NONE;[m
+ [m
+[31m-    // Debe existir en GameScreen:[m
+[31m-    private enum ActionMode {[m
+[31m-        NONE,[m
+[31m-        BUILD_STORAGE,           // tu modo original (Depósito sencillo)[m
+[31m-        BUILD_HQ, BUILD_DEPOT, BUILD_GARAGE,[m
+[31m-        ENQUEUE_HQ_SOLDIER, ENQUEUE_HQ_SWEEPER,[m
+[31m-        ENQUEUE_GAR_TRUCK, ENQUEUE_GAR_TANK[m
+[31m-    }[m
+[31m-[m
+[31m-[m
+     public GameScreen(MainGame game) {[m
+         this.game = game;[m
+ [m
+[36m@@ -125,28 +112,28 @@[m [mpublic class GameScreen implements Screen {[m
+     private void createUI() {[m
+         stage = new Stage(new ScreenViewport());[m
+ [m
+[31m-        // Carga del skin (json + atlas en core/assets/)[m
+[32m+[m[32m        // Asegúrate de tener este skin en assets: uiskin.json + uiskin.png[m
+[32m+[m[32m        // Puedes usar el skin por defecto de LibGDX: https://github.com/czyzby/gdx-skins/tree/master/uiskin[m
+[32m+[m[32m        // donde creas el Skin:[m
+         skin = new Skin([m
+             Gdx.files.internal("uiskin.json"),[m
+             new TextureAtlas(Gdx.files.internal("uiskin.atlas"))[m
+         );[m
+ [m
+[32m+[m
+         Table root = new Table();[m
+         root.setFillParent(true);[m
+         stage.addActor(root);[m
+ [m
+[31m-        // ===== Panel izquierdo (acciones) =====[m
+[32m+[m[32m        // Panel izquierdo (acciones)[m
+         Table left = new Table(skin);[m
+         left.defaults().pad(4).fillX();[m
+ [m
+[31m-        // --- Título[m
+[32m+[m[32m        // Título[m
+         Label title = new Label("Acciones", skin, "default");[m
+         left.add(title).row();[m
+ [m
+[31m-        // ---------- Construir (con costos) ----------[m
+[31m-        left.add(new Label("Construir", skin)).row();[m
+[31m-[m
+[31m-        // Tu botón original: Construir Almacén (depósito simple -50)[m
+[32m+[m[32m        // Botón: Construir Almacén (usa tu bulldozer.orderBuild)[m
+         final TextButton btnBuildStorage = new TextButton("Construir Almacen (-50)", skin);[m
+         btnBuildStorage.addListener(new ClickListener() {[m
+             @Override public void clicked(InputEvent event, float x, float y) {[m
+[36m@@ -156,80 +143,10 @@[m [mpublic class GameScreen implements Screen {[m
+         });[m
+         left.add(btnBuildStorage).row();[m
+ [m
+[31m-        // Nuevos: HQ / Depósito / Garaje (usan costos de Building)[m
+[31m-        final TextButton btnBuildHQ = new TextButton("HQ (-" + com.armymen.entities.Building.COST_HQ + ")", skin);[m
+[31m-        btnBuildHQ.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.BUILD_HQ;[m
+[31m-                modeLabel.setText("Modo: Construir HQ (clic mapa)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnBuildHQ).row();[m
+[31m-[m
+[31m-        final TextButton btnBuildDepot = new TextButton("Depósito (-" + com.armymen.entities.Building.COST_DEPOT + ")", skin);[m
+[31m-        btnBuildDepot.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.BUILD_DEPOT;[m
+[31m-                modeLabel.setText("Modo: Construir Depósito (clic mapa)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnBuildDepot).row();[m
+[31m-[m
+[31m-        final TextButton btnBuildGarage = new TextButton("Garaje (-" + com.armymen.entities.Building.COST_GARAGE + ")", skin);[m
+[31m-        btnBuildGarage.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.BUILD_GARAGE;[m
+[31m-                modeLabel.setText("Modo: Construir Garaje (clic mapa)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnBuildGarage).row();[m
+[31m-[m
+[32m+[m[32m        // Separador[m
+         left.add(new Label(" ", skin)).row();[m
+ [m
+[31m-        // ---------- Producción (colas) ----------[m
+[31m-        left.add(new Label("Producir (cola)", skin)).row();[m
+[31m-[m
+[31m-        // HQ: Soldado / BuscaMinas[m
+[31m-        final TextButton btnHQSoldier = new TextButton("HQ: Soldado (+" + com.armymen.entities.Building.COST_SOLDIER + ")", skin);[m
+[31m-        btnHQSoldier.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.ENQUEUE_HQ_SOLDIER;[m
+[31m-                modeLabel.setText("Modo: Encolar Soldado en HQ (clic un HQ)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnHQSoldier).row();[m
+[31m-[m
+[31m-        final TextButton btnHQSweeper = new TextButton("HQ: BuscaMinas (+" + com.armymen.entities.Building.COST_SWEEPER + ")", skin);[m
+[31m-        btnHQSweeper.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.ENQUEUE_HQ_SWEEPER;[m
+[31m-                modeLabel.setText("Modo: Encolar BuscaMinas en HQ (clic un HQ)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnHQSweeper).row();[m
+[31m-[m
+[31m-        // Garaje: Volqueta / Tanque[m
+[31m-        final TextButton btnGarTruck = new TextButton("Garaje: Volqueta (+" + com.armymen.entities.Building.COST_TRUCK + ")", skin);[m
+[31m-        btnGarTruck.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.ENQUEUE_GAR_TRUCK;[m
+[31m-                modeLabel.setText("Modo: Encolar Volqueta en Garaje (clic un Garaje)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnGarTruck).row();[m
+[31m-[m
+[31m-        final TextButton btnGarTank = new TextButton("Garaje: Tanque (+" + com.armymen.entities.Building.COST_TANK + ")", skin);[m
+[31m-        btnGarTank.addListener(new ClickListener() {[m
+[31m-            @Override public void clicked(InputEvent event, float x, float y) {[m
+[31m-                actionMode = ActionMode.ENQUEUE_GAR_TANK;[m
+[31m-                modeLabel.setText("Modo: Encolar Tanque en Garaje (clic un Garaje)");[m
+[31m-            }[m
+[31m-        });[m
+[31m-        left.add(btnGarTank).row();[m
+[31m-[m
+[31m-        left.add(new Label(" ", skin)).row();[m
+[31m-[m
+[31m-        // --- Cancelar modo[m
+[32m+[m[32m        // Botón: Salir de modo[m
+         final TextButton btnCancel = new TextButton("Cancelar modo", skin);[m
+         btnCancel.addListener(new ClickListener() {[m
+             @Override public void clicked(InputEvent event, float x, float y) {[m
+[36m@@ -239,19 +156,20 @@[m [mpublic class GameScreen implements Screen {[m
+         });[m
+         left.add(btnCancel).row();[m
+ [m
+[31m-        // ===== Panel superior derecho (indicadores) =====[m
+[32m+[m[32m        // Panel superior derecho: indicadores[m
+         Table top = new Table(skin);[m
+         top.defaults().pad(6);[m
+ [m
+         plasticLabel = new Label("Plástico: 0", skin);[m
+         modeLabel = new Label("Modo: Ninguno", skin);[m
+ [m
+[31m-        // ===== Layout general =====[m
+[32m+[m[32m        // Layout general: left a la izquierda, top arriba-derecha[m
+         root.left().top();[m
+[31m-        root.add(left).left().top().width(240f);[m
+[32m+[m[32m        root.add(left).left().top().width(220f);[m
+ [m
+         root.add().expand(); // espacio central[m
+ [m
+[32m+[m[32m        // Columna derecha (arriba): indicadores[m
+         Table rightCol = new Table(skin);[m
+         rightCol.add(plasticLabel).right().row();[m
+         rightCol.add(modeLabel).right().row();[m
+[36m@@ -315,10 +233,6 @@[m [mpublic class GameScreen implements Screen {[m
+ [m
+         // Actualizar HUD[m
+         plasticLabel.setText("Plástico: " + resourceManager.getPlastic());[m
+[31m-[m
+[31m-        for (Building b : buildings) {[m
+[31m-            b.update(delta, playerUnits, resourceManager);[m
+[31m-        }[m
+     }[m
+ [m
+     // -------------------------------------------------------------------------------------[m
+[36m@@ -338,72 +252,37 @@[m [mpublic class GameScreen implements Screen {[m
+         if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {[m
+             Vector2 world = screenToWorld(Gdx.input.getX(), Gdx.input.getY());[m
+ [m
+[31m-            // --- Construcciones ---[m
+[31m-            if (actionMode == ActionMode.BUILD_HQ || actionMode == ActionMode.BUILD_DEPOT || actionMode == ActionMode.BUILD_GARAGE) {[m
+[31m-                // verificar espacio libre[m
+[32m+[m[32m            if (actionMode == ActionMode.BUILD_STORAGE) {[m
+[32m+[m[32m                // Construcción directa: no requiere tener seleccionado el bulldozer[m
+                 boolean spaceFree = true;[m
+[31m-                for (Building b : buildings) if (b.getBounds().contains(world)) { spaceFree = false; break; }[m
+[31m-                if (!spaceFree) { modeLabel.setText("Espacio ocupado."); return; }[m
+[31m-[m
+[31m-                BuildingKind kind;[m
+[31m-                int cost;[m
+[31m-                if (actionMode == ActionMode.BUILD_HQ) { kind = BuildingKind.HQ; cost = Building.COST_HQ; }[m
+[31m-                else if (actionMode == ActionMode.BUILD_GARAGE) { kind = BuildingKind.GARAGE; cost = Building.COST_GARAGE; }[m
+[31m-                else { kind = BuildingKind.DEPOT; cost = Building.COST_DEPOT; }[m
+[31m-[m
+[31m-                if (resourceManager.spend(cost)) {[m
+[31m-                    bulldozer.orderBuild(world, kind);[m
+[31m-                    modeLabel.setText("Construyendo " + kind + "...");[m
+[31m-                    actionMode = ActionMode.NONE;[m
+[31m-                } else {[m
+[31m-                    modeLabel.setText("Plástico insuficiente (" + cost + ").");[m
+[31m-                }[m
+[31m-                return;[m
+[31m-            }[m
+[31m-[m
+[31m-            // --- Encolar producción ---[m
+[31m-            if (actionMode == ActionMode.ENQUEUE_HQ_SOLDIER || actionMode == ActionMode.ENQUEUE_HQ_SWEEPER[m
+[31m-                || actionMode == ActionMode.ENQUEUE_GAR_TRUCK || actionMode == ActionMode.ENQUEUE_GAR_TANK) {[m
+[31m-[m
+[31m-                // Busca edificio clickeado[m
+[31m-                Building clicked = null;[m
+                 for (Building b : buildings) {[m
+[31m-                    if (b.getBounds().contains(world)) { clicked = b; break; }[m
+[32m+[m[32m                    if (b.getBounds().contains(world)) { spaceFree = false; break; }[m
+                 }[m
+[31m-                if (clicked == null) { modeLabel.setText("Clic sobre el edificio destino."); return; }[m
+ [m
+[31m-                // Verificación de tipo[m
+[31m-                if ((actionMode == ActionMode.ENQUEUE_HQ_SOLDIER || actionMode == ActionMode.ENQUEUE_HQ_SWEEPER)[m
+[31m-                    && clicked.getKind() != BuildingKind.HQ) {[m
+[31m-                    modeLabel.setText("Debes clicar un HQ.");[m
+[31m-                    return;[m
+[31m-                }[m
+[31m-                if ((actionMode == ActionMode.ENQUEUE_GAR_TRUCK || actionMode == ActionMode.ENQUEUE_GAR_TANK)[m
+[31m-                    && clicked.getKind() != BuildingKind.GARAGE) {[m
+[31m-                    modeLabel.setText("Debes clicar un Garaje.");[m
+[32m+[m[32m                if (!spaceFree) {[m
+[32m+[m[32m                    modeLabel.setText("Espacio ocupado. Elige otro lugar.");[m
+                     return;[m
+                 }[m
+ [m
+[31m-                if (!clicked.hasQueue()) { modeLabel.setText("Ese edificio no tiene cola."); return; }[m
+[31m-[m
+[31m-                String order = (actionMode == ActionMode.ENQUEUE_HQ_SOLDIER) ? "SOLDIER"[m
+[31m-                    : (actionMode == ActionMode.ENQUEUE_HQ_SWEEPER) ? "SWEEPER"[m
+[31m-                    : (actionMode == ActionMode.ENQUEUE_GAR_TRUCK) ? "TRUCK"[m
+[31m-                    : "TANK";[m
+[31m-[m
+[31m-                clicked.getQueue().add(order);           // ¡Se puede encolar sin plástico![m
+[31m-                modeLabel.setText("Encolado: " + order + ". Cola ahora: " + clicked.getQueue().size());[m
+[32m+[m[32m                // Coste fijo: 50 (como ya usas en tu right-click)[m
+[32m+[m[32m                if (resourceManager.spend(50)) {[m
+[32m+[m[32m                    // Ordenar al bulldozer que vaya a construir[m
+[32m+[m[32m                    bulldozer.orderBuild(world);[m
+[32m+[m[32m                    modeLabel.setText("Construyendo... (Bulldozer en camino)");[m
+[32m+[m[32m                } else {[m
+[32m+[m[32m                    modeLabel.setText("Plástico insuficiente (50).");[m
+[32m+[m[32m                }[m
+ [m
+[32m+[m[32m                // Tras click, salimos del modo construcción[m
+                 actionMode = ActionMode.NONE;[m
+                 return;[m
+             }[m
+ [m
+[31m-            // Si no hay modo especial → iniciar selección por arrastre[m
+[32m+[m[32m            // Si NO estamos en modo de construcción → iniciar selección por arrastre[m
+             selectStart = world;[m
+             selecting = true;[m
+         }[m
+ [m
+[31m-[m
+         // Arrastre[m
+         if (selecting) {[m
+             selectEnd = screenToWorld(Gdx.input.getX(), Gdx.input.getY());[m
+[1mdiff --git a/core/src/main/java/com/armymen/systems/CreationQueue.java b/core/src/main/java/com/armymen/systems/CreationQueue.java[m
+[1mdeleted file mode 100644[m
+[1mindex 47729e8..0000000[m
+[1m--- a/core/src/main/java/com/armymen/systems/CreationQueue.java[m
+[1m+++ /dev/null[m
+[36m@@ -1,13 +0,0 @@[m
+[31m-package com.armymen.systems;[m
+[31m-[m
+[31m-import com.badlogic.gdx.utils.Array;[m
+[31m-[m
+[31m-public class CreationQueue {[m
+[31m-    private Array<String> items = new Array<>();[m
+[31m-[m
+[31m-    public void add(String type) { items.add(type); }[m
+[31m-    public boolean hasOrders() { return items.size > 0; }[m
+[31m-    public String peek() { return items.size > 0 ? items.get(0) : null; }[m
+[31m-    public String poll() { return items.size > 0 ? items.removeIndex(0) : null; }[m
+[31m-    public int size() { return items.size; }[m
+[31m-}[m

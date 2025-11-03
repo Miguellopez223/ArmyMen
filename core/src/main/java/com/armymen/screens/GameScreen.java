@@ -404,6 +404,7 @@ public class GameScreen implements Screen {
         }
 
 
+
         // Arrastre
         if (selecting) {
             selectEnd = screenToWorld(Gdx.input.getX(), Gdx.input.getY());
