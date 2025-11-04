@@ -26,8 +26,9 @@ public class PlasticTruck extends Unit {
 
     public PlasticTruck(Vector2 startPos) {
         super(startPos);
-        this.setTexture(new Texture("truck.png"));  // crea/coloca truck.png
-        this.speed = 220f; // un poco más rápido que soldado
+        this.setTexture(new Texture("truck.png"));
+        this.speed = 220f;
+        this.unitTag = "TRUCK";
     }
 
     /** Lógica económica: llamar desde GameScreen.update() SOLO para PlasticTruck */

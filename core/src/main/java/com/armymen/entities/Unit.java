@@ -13,6 +13,7 @@ public class Unit {
     protected float speed = 200f;
     protected float radius = 25f;
     protected Texture tex;
+    protected String unitTag = "GENERIC";
 
     public Unit(Vector2 startPos) {
         this.position = new Vector2(startPos);
@@ -50,4 +51,6 @@ public class Unit {
     public void setTarget(Vector2 target) { this.target.set(target); }
 
     public Vector2 getPosition() { return position; }
+    public String getTag() { return unitTag; }
+    public void setTag(String tag) { this.unitTag = tag; }
 }

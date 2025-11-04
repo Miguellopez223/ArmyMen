@@ -124,16 +124,16 @@ public class Building {
         Unit u;
         if (type.equals("SOLDIER")) {
             u = new Unit(spawn);
+            u.setTexture(new Texture("soldier.png"));
+            u.setTag("SOLDIER");
         } else if (type.equals("SWEEPER")) {
-            // AHORA sí creamos la subclase buscaminas
             u = new MineSweeper(spawn);
-            // Dentro de Building.tryCreateOne(...)
         } else if (type.equals("TRUCK")) {
-            // Crear volqueta que transporta plástico
             u = new PlasticTruck(spawn);
         } else { // TANK
             u = new Unit(spawn);
-            u.setTexture(new Texture("soldier.png"));
+            u.setTexture(new Texture("tank.png"));
+            u.setTag("TANK");
         }
         allUnits.add(u);
 

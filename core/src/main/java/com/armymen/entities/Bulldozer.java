@@ -19,6 +19,7 @@ public class Bulldozer extends Unit {
     public Bulldozer(Vector2 startPos) {
         super(startPos);
         this.setTexture(new Texture("bulldozer.png"));
+        this.unitTag = "BULLDOZER";
     }
 
     @Override

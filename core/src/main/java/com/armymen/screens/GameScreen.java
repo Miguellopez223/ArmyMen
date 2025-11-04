@@ -359,35 +359,50 @@ public class GameScreen implements Screen {
             }
         }
 
-        // ======= Lógica de minas (mínima y clara) =======
-        // Si unidad normal toca una mina -> explota, pierdes plástico y la mina desaparece.
-        // Si es MineSweeper -> desactiva sin penalidad y ganas un bono pequeño.
-        for (int i = mines.size - 1; i >= 0; i--) {
-            Mine m = mines.get(i);
+        // ======= Lógica de minas =======
+
+        // 5.1) Primero: los MineSweeper desactivan minas en rango (sin pisarlas)
+        for (int mi = mines.size - 1; mi >= 0; mi--) {
+            Mine m = mines.get(mi);
             boolean removed = false;
 
-            for (int j = 0; j < playerUnits.size; j++) {
-                Unit u = playerUnits.get(j);
-                float dist = u.getPosition().dst(m.getPosition());
-
-                if (dist <= m.getRadius()) {
-                    if (u instanceof MineSweeper) {
-                        // Desactivar
-                        resourceManager.add(DISARM_BONUS);
-                        mines.removeIndex(i);
+            for (int ui = 0; ui < playerUnits.size; ui++) {
+                Unit u = playerUnits.get(ui);
+                if (u instanceof MineSweeper) {
+                    MineSweeper s = (MineSweeper) u;
+                    if (s.getPosition().dst(m.getPosition()) <= s.getDetectRadius()) {
+                        resourceManager.add(DISARM_BONUS); // bonus por desactivar
+                        mines.removeIndex(mi);
                         removed = true;
-                    } else {
-                        // Explota: restar plástico (hasta donde alcance)
-                        int available = resourceManager.getPlastic();
-                        int toSpend = Math.min(MINE_PENALTY, available);
-                        if (toSpend > 0) resourceManager.spend(toSpend);
-                        mines.removeIndex(i);
-                        removed = true;
+                        break;
                     }
-                    break; // ya removimos esta mina, salir del loop de unidades
                 }
             }
-            if (removed) continue;
+            if (removed) continue; // ya removida, sigue con siguiente mina
+        }
+
+        // 5.2) Luego: si SOLDIER o TANK pisan una mina -> explotan (unidad + mina)
+        for (int mi = mines.size - 1; mi >= 0; mi--) {
+            Mine m = mines.get(mi);
+            boolean exploded = false;
+
+            for (int ui = playerUnits.size - 1; ui >= 0; ui--) {
+                Unit u = playerUnits.get(ui);
+
+                // Solo detonan si son SOLDIER o TANK
+                String tag = u.getTag();
+                if (!"SOLDIER".equals(tag) && !"TANK".equals(tag)) continue;
+
+                float dist = u.getPosition().dst(m.getPosition());
+                if (dist <= m.getRadius()) {
+                    // Explota: eliminar unidad y mina
+                    playerUnits.removeIndex(ui);
+                    mines.removeIndex(mi);
+                    exploded = true;
+                    break;
+                }
+            }
+            if (exploded) continue;
         }
 
         // HUD
