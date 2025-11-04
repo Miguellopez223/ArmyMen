@@ -62,6 +62,7 @@ public class Bulldozer extends Unit {
             String tex = "building_storage.png";
             if (pendingKind == BuildingKind.HQ) tex = "building_hq.png";
             else if (pendingKind == BuildingKind.GARAGE) tex = "building_garage.png";
+            else if (pendingKind == BuildingKind.FORTIN) tex = "building_fortin.png";
             else tex = "building_storage.png"; // DEPOT por defecto
 
             Building newBuilding = new Building(pendingBuildPos, tex, pendingKind);

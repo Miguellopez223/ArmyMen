@@ -30,6 +30,7 @@ public class Lwjgl3Launcher {
         check("building_garage.png");
         check("mine.png");
         check("sweeper.png");
+        check("building_fortin.png");
 
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
         configuration.setTitle("ArmyMen");

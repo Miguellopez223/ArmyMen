@@ -90,17 +90,14 @@ public class GameScreen implements Screen {
     private static final int NUM_RANDOM_MINES = 70;   // cantidad de minas
     private static final int PILE_MIN_AMOUNT = 80;
     private static final int PILE_MAX_AMOUNT = 260;
-
-
-    // Debe existir en GameScreen:
     private enum ActionMode {
         NONE,
-        BUILD_STORAGE,           // tu modo original (Depósito sencillo)
-        BUILD_HQ, BUILD_DEPOT, BUILD_GARAGE,
+        BUILD_STORAGE,
+        BUILD_HQ, BUILD_DEPOT, BUILD_GARAGE, BUILD_FORTIN,
         ENQUEUE_HQ_SOLDIER, ENQUEUE_HQ_SWEEPER,
         ENQUEUE_GAR_TRUCK, ENQUEUE_GAR_TANK
     }
-
+    private static final float FORT_RADIUS = 260f; // radio de defensa del fortín
     // Penalidades/bonos simples
     private final int MINE_PENALTY = 20;   // lo que te resta si explota
     private final int DISARM_BONUS = 5;    // lo que ganas al desactivar con buscaminas
@@ -220,6 +217,14 @@ public class GameScreen implements Screen {
             }
         });
         left.add(btnBuildGarage).row();
+        final TextButton btnBuildFortin = new TextButton("Fortin (-" + com.armymen.entities.Building.COST_FORTIN + ")", skin);
+        btnBuildFortin.addListener(new ClickListener() {
+            @Override public void clicked(InputEvent event, float x, float y) {
+                actionMode = ActionMode.BUILD_FORTIN;
+                modeLabel.setText("Modo: Construir Fortín (clic mapa)");
+            }
+        });
+        left.add(btnBuildFortin).row();
 
         left.add(new Label(" ", skin)).row();
 
@@ -431,6 +436,26 @@ public class GameScreen implements Screen {
             if (removed) continue; // ya removida, sigue con siguiente mina
         }
 
+        // 5.15) Los Fortines desactivan minas en su radio
+        for (int mi = mines.size - 1; mi >= 0; mi--) {
+            Mine m = mines.get(mi);
+            boolean removedByFort = false;
+
+            for (int bi = 0; bi < buildings.size; bi++) {
+                Building b = buildings.get(bi);
+                if (b.getKind() != BuildingKind.FORTIN) continue;
+
+                if (b.getPosition().dst(m.getPosition()) <= FORT_RADIUS) {
+                    // desactivada por fortín
+                    resourceManager.add(DISARM_BONUS); // opcional: premiamos defensa
+                    mines.removeIndex(mi);
+                    removedByFort = true;
+                    break;
+                }
+            }
+            if (removedByFort) continue;
+        }
+
         // 5.2) Luego: si SOLDIER o TANK pisan una mina -> explotan (unidad + mina)
         for (int mi = mines.size - 1; mi >= 0; mi--) {
             Mine m = mines.get(mi);
@@ -529,8 +554,9 @@ public class GameScreen implements Screen {
             Vector2 world = screenToWorld(Gdx.input.getX(), Gdx.input.getY());
 
             // --- Construcciones ---
-            if (actionMode == ActionMode.BUILD_HQ || actionMode == ActionMode.BUILD_DEPOT || actionMode == ActionMode.BUILD_GARAGE) {
-                // verificar espacio libre
+            if (actionMode == ActionMode.BUILD_HQ || actionMode == ActionMode.BUILD_DEPOT
+                || actionMode == ActionMode.BUILD_GARAGE || actionMode == ActionMode.BUILD_FORTIN) {
+
                 boolean spaceFree = true;
                 for (Building b : buildings) if (b.getBounds().contains(world)) { spaceFree = false; break; }
                 if (!spaceFree) { modeLabel.setText("Espacio ocupado."); return; }
@@ -539,6 +565,7 @@ public class GameScreen implements Screen {
                 int cost;
                 if (actionMode == ActionMode.BUILD_HQ) { kind = BuildingKind.HQ; cost = Building.COST_HQ; }
                 else if (actionMode == ActionMode.BUILD_GARAGE) { kind = BuildingKind.GARAGE; cost = Building.COST_GARAGE; }
+                else if (actionMode == ActionMode.BUILD_FORTIN) { kind = BuildingKind.FORTIN; cost = Building.COST_FORTIN; } // NUEVO
                 else { kind = BuildingKind.DEPOT; cost = Building.COST_DEPOT; }
 
                 if (resourceManager.spend(cost)) {

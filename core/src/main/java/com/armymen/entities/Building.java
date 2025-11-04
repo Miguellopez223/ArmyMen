@@ -27,6 +27,7 @@ public class Building {
     public static final float TIME_SWEEPER = 1.2f;
 
     public static final int COST_TRUCK = 50;
+    public static final int COST_FORTIN = 80;
     public static final float TIME_TRUCK = 1.2f;
 
     public static final int COST_TANK = 90;
