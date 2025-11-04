@@ -49,7 +49,7 @@ public class GameScreen implements Screen {
     private ResourceManager resourceManager;
     private Array<Mine> mines;
     private Array<ToyPile> toyPiles;
-
+    private com.badlogic.gdx.utils.Array<Projectile> bullets; // NUEVO
 
     // === Selección con arrastre ===
     private boolean selecting = false;
@@ -129,6 +129,8 @@ public class GameScreen implements Screen {
 
         enemyUnits = new Array<>();
         enemyBuildings = new Array<>();
+
+        bullets = new com.badlogic.gdx.utils.Array<>();
 
         // ======= Generación de mundo grande =======
         generateWorld(); // <-- NUEVO: crea pilas y minas aleatoriamente
@@ -385,6 +387,20 @@ public class GameScreen implements Screen {
             shape.end();
         }
 
+        // === Balas (circulitos) ===
+        shape.setProjectionMatrix(camera.combined);
+        shape.begin(com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < bullets.size; i++) {
+            Projectile p = bullets.get(i);
+            if (p.isEnemyBullet()) {
+                shape.setColor(1f, 0f, 0f, 1f);   // rojo enemigo
+            } else {
+                shape.setColor(1f, 1f, 1f, 1f);   // blanco (o "azul" si prefieres: setColor(0f,0.5f,1f,1f))
+            }
+            shape.circle(p.getPos().x, p.getPos().y, p.getRadius());
+        }
+        shape.end();
+
         // Resaltar seleccionados
         shape.setProjectionMatrix(camera.combined);
         shape.begin(ShapeRenderer.ShapeType.Line);
@@ -430,6 +446,13 @@ public class GameScreen implements Screen {
             if (!toyPiles.get(i).hasMaterial()) {
                 toyPiles.removeIndex(i);
             }
+        }
+
+        // Actualiza balas y limpia las que mueren
+        for (int i = bullets.size - 1; i >= 0; i--) {
+            Projectile p = bullets.get(i);
+            boolean alive = p.update(delta);
+            if (!alive) bullets.removeIndex(i);
         }
 
         // ======= Lógica de minas =======
@@ -794,39 +817,62 @@ public class GameScreen implements Screen {
         }
     }
 
-    // --- Daño por “tick” cuando hay objetivo en rango ---
     private void doCombatTick(float delta) {
-        // 1) Enemigos atacan a unidades/edificios del jugador si están en rango
+        // Enemigos disparan a jugador
         for (int i = 0; i < enemyUnits.size; i++) {
             Unit e = enemyUnits.get(i);
+            // objetivo prioritario: unidades del jugador
             Unit targetU = findClosestInRange(e.getPosition(), e.getAttackRange(), playerUnits);
             if (targetU != null && e.canAttack()) {
-                targetU.damage(e.getAttackDamage());
+                spawnBullet(e, targetU, true);
                 e.commitAttack();
                 continue;
             }
+            // si no hay unidad en rango, edificios del jugador
             Building targetB = findClosestBuildingInRange(e.getPosition(), e.getAttackRange(), buildings);
             if (targetB != null && e.canAttack()) {
-                targetB.damage(e.getAttackDamage());
+                spawnBullet(e, targetB, true);
                 e.commitAttack();
             }
         }
 
-        // 2) Jugador ataca a unidades/edificios enemigos si están en rango
+        // Jugador dispara a enemigos
         for (int i = 0; i < playerUnits.size; i++) {
             Unit u = playerUnits.get(i);
             Unit targetE = findClosestInRange(u.getPosition(), u.getAttackRange(), enemyUnits);
             if (targetE != null && u.canAttack()) {
-                targetE.damage(u.getAttackDamage());
+                spawnBullet(u, targetE, false);
                 u.commitAttack();
                 continue;
             }
             Building targetEB = findClosestBuildingInRange(u.getPosition(), u.getAttackRange(), enemyBuildings);
             if (targetEB != null && u.canAttack()) {
-                targetEB.damage(u.getAttackDamage());
+                spawnBullet(u, targetEB, false);
                 u.commitAttack();
             }
         }
+    }
+
+    // Crea una bala hacia una unidad
+    private void spawnBullet(Unit shooter, Unit target, boolean isEnemyBullet) {
+        float speed = 560f; // velocidad de bala (ajustable)
+        float damage = shooter.getAttackDamage();
+        bullets.add(new Projectile(
+            shooter.getPosition(), target.getPosition(),
+            speed, damage, isEnemyBullet,
+            target, null
+        ));
+    }
+
+    // Crea una bala hacia un edificio
+    private void spawnBullet(Unit shooter, Building target, boolean isEnemyBullet) {
+        float speed = 540f;
+        float damage = shooter.getAttackDamage();
+        bullets.add(new Projectile(
+            shooter.getPosition(), target.getPosition(),
+            speed, damage, isEnemyBullet,
+            null, target
+        ));
     }
 
     private Unit findClosestInRange(Vector2 from, float range, Array<Unit> candidates) {
