@@ -11,6 +11,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -86,6 +87,10 @@ public class GameScreen implements Screen {
     private static final float WORLD_W = 6000f;
     private static final float WORLD_H = 6000f;
 
+    // === Fondo ===
+    private Texture bgTex;
+    private static final int BG_TILE = 256; // tamaño del tile en px (ajusta a tu imagen)
+
     // Zona segura de “spawn” inicial para no poner minas/pilas muy cerca
     private static final Vector2 START_POS = new Vector2(700, 450); // zona inicial aprox. tus edificios/unidades
     private static final float SAFE_RADIUS = 500f;                   // nada peligroso tan cerca
@@ -116,6 +121,8 @@ public class GameScreen implements Screen {
         this.camera.setToOrtho(false, 1280, 720);
         this.batch = new SpriteBatch();
         this.shape = new ShapeRenderer();
+
+        bgTex = new Texture("bg_grass.png"); // debe ser una textura "seamless"
 
         // Estado del juego
         this.buildings = new Array<>();
@@ -352,27 +359,57 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // === Dibujo del mundo (SpriteBatch) ===
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        // 1) Edificios
-        for (Building b : buildings) b.render(batch);
+        // === FONDO TILEADO según cámara ===
+        float halfW = camera.viewportWidth * 0.5f;
+        float halfH = camera.viewportHeight * 0.5f;
 
+        // límites visibles en mundo
+        float viewLeft   = camera.position.x - halfW;
+        float viewRight  = camera.position.x + halfW;
+        float viewBottom = camera.position.y - halfH;
+        float viewTop    = camera.position.y + halfH;
+
+        // primer tile a dibujar (desplazado al múltiplo de BG_TILE)
+        int startX = (int)Math.floor(viewLeft  / BG_TILE) - 1;
+        int endX   = (int)Math.ceil (viewRight / BG_TILE) + 1;
+        int startY = (int)Math.floor(viewBottom/ BG_TILE) - 1;
+        int endY   = (int)Math.ceil (viewTop   / BG_TILE) + 1;
+
+        // clampa para no dibujar fuera del mundo (opcional)
+        int minTileX = 0;
+        int maxTileX = (int)Math.ceil(WORLD_W / BG_TILE);
+        int minTileY = 0;
+        int maxTileY = (int)Math.ceil(WORLD_H / BG_TILE);
+
+        startX = Math.max(startX, minTileX);
+        startY = Math.max(startY, minTileY);
+        endX   = Math.min(endX,   maxTileX);
+        endY   = Math.min(endY,   maxTileY);
+
+        // pinta la grilla visible
+        for (int ty = startY; ty < endY; ty++) {
+            for (int tx = startX; tx < endX; tx++) {
+                float x = tx * BG_TILE;
+                float y = ty * BG_TILE;
+                batch.draw(bgTex, x, y, BG_TILE, BG_TILE);
+            }
+        }
+
+        // === (aquí ya sigues con tu dibujo actual) ===
+        // 1) Edificios del jugador
+        for (Building b : buildings) b.render(batch);
         // 2) ToyPiles
         for (ToyPile p : toyPiles) p.render(batch);
-
         // 3) Minas
         for (Mine m : mines) m.render(batch);
-
-        // 4) Unidades JUGADOR
+        // 4) Unidades jugador
         for (Unit u : playerUnits) u.render(batch);
-
-        // 5) Unidades ENEMIGAS
+        // 5) Unidades enemigas
         for (Unit e : enemyUnits) e.render(batch);
-
-        // 6) Edificios ENEMIGOS (para que queden por debajo o encima, como prefieras)
-        // (si quieres que se vean junto con los tuyos, puedes mover este bloque arriba o abajo)
+        // 6) Buildings enemigas
         for (Building eb : enemyBuildings) eb.render(batch);
 
         batch.end();
@@ -1004,5 +1041,6 @@ public class GameScreen implements Screen {
         batch.dispose();
         shape.dispose();
         stage.dispose();
+        if (bgTex != null) bgTex.dispose();
     }
 }
