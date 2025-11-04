@@ -22,7 +22,7 @@ public class Unit {
     protected boolean stationary = false;   // si true, no se mueve (usado por enemigos)
     public float hp = 100f;
     public float attackDamage = 10f;
-    public float attackRange = 120f;
+    public float attackRange = 200f;
     protected float attackCooldown = 0.6f;
     protected float attackTimer = 0f;
 

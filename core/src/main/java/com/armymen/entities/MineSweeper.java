@@ -4,7 +4,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 
 public class MineSweeper extends Unit {
-    private float detectRadius = 70f; // rango para desactivar sin pisar
+    private float detectRadius = 100f; // rango para desactivar sin pisar
 
     public MineSweeper(Vector2 startPos) {
         super(startPos);

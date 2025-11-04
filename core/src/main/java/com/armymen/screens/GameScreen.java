@@ -154,6 +154,11 @@ public class GameScreen implements Screen {
         playerUnits.add(new Unit(new Vector2(1000, 500)));
         playerUnits.add(new Unit(new Vector2(1200, 250)));
 
+
+        playerUnits.add(new SoldierAlt(new Vector2(1300, 300)));
+        playerUnits.add(new SoldierAlt(new Vector2(1350, 330)));
+        playerUnits.add(new SoldierAlt(new Vector2(1400, 310)));
+
         // Un edificio de ejemplo
         buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
 
@@ -950,7 +955,7 @@ public class GameScreen implements Screen {
             s.setStationary(true);
             s.hp = 100f;
             s.attackDamage = 10f;
-            s.attackRange = 120f;
+            s.attackRange = 200f;
             return s;
         };
         // Helper tanque enemigo
@@ -962,7 +967,7 @@ public class GameScreen implements Screen {
             t.setStationary(true);
             t.hp = 160f;
             t.attackDamage = 20f;
-            t.attackRange = 150f;
+            t.attackRange = 200f;
             return t;
         };
         // Helper building enemigo
