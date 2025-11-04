@@ -61,6 +61,11 @@ public class GameScreen implements Screen {
     private Skin skin;
     private Label plasticLabel;
     private Label modeLabel;
+    // Arriba, junto a tus colecciones:
+    private Array<Unit> enemyUnits;
+    private Array<Building> enemyBuildings;
+
+    private boolean gameWon = false;
 
     // === HUD extra (estado) ===
     private Label unitsTitleLabel;
@@ -122,8 +127,12 @@ public class GameScreen implements Screen {
         mines = new Array<>();
         toyPiles = new Array<>();
 
+        enemyUnits = new Array<>();
+        enemyBuildings = new Array<>();
+
         // ======= Generación de mundo grande =======
         generateWorld(); // <-- NUEVO: crea pilas y minas aleatoriamente
+        generateEnemyCamps();
 
         // Entidades base
         bulldozer = new Bulldozer(new Vector2(500, 500));
@@ -354,8 +363,15 @@ public class GameScreen implements Screen {
         // 3) Minas
         for (Mine m : mines) m.render(batch);
 
-        // 4) Unidades
+        // 4) Unidades JUGADOR
         for (Unit u : playerUnits) u.render(batch);
+
+        // 5) Unidades ENEMIGAS
+        for (Unit e : enemyUnits) e.render(batch);
+
+        // 6) Edificios ENEMIGOS (para que queden por debajo o encima, como prefieras)
+        // (si quieres que se vean junto con los tuyos, puedes mover este bloque arriba o abajo)
+        for (Building eb : enemyBuildings) eb.render(batch);
 
         batch.end();
 
@@ -387,6 +403,8 @@ public class GameScreen implements Screen {
         handleInput();
 
         for (Unit u : playerUnits) u.update(delta);
+
+        for (Unit e : enemyUnits) e.update(delta); // solo baja attackTimer
 
         // Empujón suave contra edificios (como ya lo tienes)
         for (Unit u : playerUnits) {
@@ -444,10 +462,10 @@ public class GameScreen implements Screen {
             for (int bi = 0; bi < buildings.size; bi++) {
                 Building b = buildings.get(bi);
                 if (b.getKind() != BuildingKind.FORTIN) continue;
+                if (b.isEnemy()) continue; // SOLO fortín del jugador desactiva minas
 
                 if (b.getPosition().dst(m.getPosition()) <= FORT_RADIUS) {
-                    // desactivada por fortín
-                    resourceManager.add(DISARM_BONUS); // opcional: premiamos defensa
+                    resourceManager.add(DISARM_BONUS);
                     mines.removeIndex(mi);
                     removedByFort = true;
                     break;
@@ -479,6 +497,9 @@ public class GameScreen implements Screen {
             }
             if (exploded) continue;
         }
+
+        // --- COMBATE: enemigos disparan si el jugador entra en rango ---
+        doCombatTick(delta);
 
         // HUD
         plasticLabel.setText("Plástico: " + resourceManager.getPlastic());
@@ -534,6 +555,31 @@ public class GameScreen implements Screen {
         for (Building b : buildings) {
             b.update(delta, playerUnits, resourceManager);
         }
+
+        // Limpieza de unidades caídas
+        for (int i = playerUnits.size - 1; i >= 0; i--) {
+            if (playerUnits.get(i).isDead()) playerUnits.removeIndex(i);
+        }
+        for (int i = enemyUnits.size - 1; i >= 0; i--) {
+            if (enemyUnits.get(i).isDead()) enemyUnits.removeIndex(i);
+        }
+
+        // Limpieza de edificios destruidos
+        for (int i = buildings.size - 1; i >= 0; i--) {
+            Building b = buildings.get(i);
+            if (b.isDestroyed()) buildings.removeIndex(i);
+        }
+        for (int i = enemyBuildings.size - 1; i >= 0; i--) {
+            Building b = enemyBuildings.get(i);
+            if (b.isDestroyed()) enemyBuildings.removeIndex(i);
+        }
+
+        // Victoria: no quedan buildings enemigos
+        if (!gameWon && enemyBuildings.size == 0) {
+            gameWon = true;
+            modeLabel.setText("¡VICTORIA! Eliminaste todas las bases enemigas.");
+        }
+
     }
 
     // -------------------------------------------------------------------------------------
@@ -747,6 +793,155 @@ public class GameScreen implements Screen {
             toyPiles.add(new ToyPile(p, amount));
         }
     }
+
+    // --- Daño por “tick” cuando hay objetivo en rango ---
+    private void doCombatTick(float delta) {
+        // 1) Enemigos atacan a unidades/edificios del jugador si están en rango
+        for (int i = 0; i < enemyUnits.size; i++) {
+            Unit e = enemyUnits.get(i);
+            Unit targetU = findClosestInRange(e.getPosition(), e.getAttackRange(), playerUnits);
+            if (targetU != null && e.canAttack()) {
+                targetU.damage(e.getAttackDamage());
+                e.commitAttack();
+                continue;
+            }
+            Building targetB = findClosestBuildingInRange(e.getPosition(), e.getAttackRange(), buildings);
+            if (targetB != null && e.canAttack()) {
+                targetB.damage(e.getAttackDamage());
+                e.commitAttack();
+            }
+        }
+
+        // 2) Jugador ataca a unidades/edificios enemigos si están en rango
+        for (int i = 0; i < playerUnits.size; i++) {
+            Unit u = playerUnits.get(i);
+            Unit targetE = findClosestInRange(u.getPosition(), u.getAttackRange(), enemyUnits);
+            if (targetE != null && u.canAttack()) {
+                targetE.damage(u.getAttackDamage());
+                u.commitAttack();
+                continue;
+            }
+            Building targetEB = findClosestBuildingInRange(u.getPosition(), u.getAttackRange(), enemyBuildings);
+            if (targetEB != null && u.canAttack()) {
+                targetEB.damage(u.getAttackDamage());
+                u.commitAttack();
+            }
+        }
+    }
+
+    private Unit findClosestInRange(Vector2 from, float range, Array<Unit> candidates) {
+        Unit best = null;
+        float best2 = range * range;
+        for (int i = 0; i < candidates.size; i++) {
+            Unit c = candidates.get(i);
+            float d2 = from.dst2(c.getPosition());
+            if (d2 <= best2) {
+                best2 = d2;
+                best = c;
+            }
+        }
+        return best;
+    }
+
+    private Building findClosestBuildingInRange(Vector2 from, float range, Array<Building> buildingsList) {
+        Building best = null;
+        float best2 = range * range;
+        for (int i = 0; i < buildingsList.size; i++) {
+            Building b = buildingsList.get(i);
+            float d2 = from.dst2(b.getPosition());
+            if (d2 <= best2) {
+                best2 = d2;
+                best = b;
+            }
+        }
+        return best;
+    }
+
+    // Crea 4 “campamentos” enemigos de distinta dificultad
+    private void generateEnemyCamps() {
+        // Helper para crear un soldado enemigo
+        java.util.function.Function<Vector2, Unit> enemySoldier = (pos) -> {
+            Unit s = new Unit(pos);
+            s.setTag("SOLDIER");
+            s.setEnemy(true);
+            s.setStationary(true);
+            s.hp = 100f;
+            s.attackDamage = 10f;
+            s.attackRange = 120f;
+            return s;
+        };
+        // Helper tanque enemigo
+        java.util.function.Function<Vector2, Unit> enemyTank = (pos) -> {
+            Unit t = new Unit(pos);
+            t.setTexture(new com.badlogic.gdx.graphics.Texture("tank.png"));
+            t.setTag("TANK");
+            t.setEnemy(true);
+            t.setStationary(true);
+            t.hp = 160f;
+            t.attackDamage = 20f;
+            t.attackRange = 150f;
+            return t;
+        };
+        // Helper building enemigo
+        java.util.function.BiFunction<Vector2, BuildingKind, Building> enemyBuild = (pos, kind) -> {
+            String tex = "building_storage.png";
+            if (kind == BuildingKind.HQ) tex = "building_hq.png";
+            else if (kind == BuildingKind.GARAGE) tex = "building_garage.png";
+            else if (kind == BuildingKind.FORTIN) tex = "building_fortin.png";
+            Building b = new Building(pos, tex, kind, true);
+            return b;
+        };
+
+        // 1) Campamento fácil: solo soldados
+        placeSoldierGroup(new Vector2(2200, 5200), 6, enemySoldier);
+
+        // 2) Soldados + Fortín + minas
+        placeSoldierGroup(new Vector2(4800, 4600), 8, enemySoldier);
+        enemyBuildings.add(enemyBuild.apply(new Vector2(4800, 4600), BuildingKind.FORTIN));
+        // minas alrededor
+        circleMines(new Vector2(4800, 4600), 220f, 8);
+
+        // 3) Soldados + Fortín + Tanques
+        placeSoldierGroup(new Vector2(5200, 2200), 10, enemySoldier);
+        enemyUnits.add(enemyTank.apply(new Vector2(5260, 2200)));
+        enemyUnits.add(enemyTank.apply(new Vector2(5140, 2240)));
+        enemyBuildings.add(enemyBuild.apply(new Vector2(5200, 2200), BuildingKind.FORTIN));
+
+        // 4) “Completo”: soldados + tanques + minas + buildings (HQ, DEPOT, GARAGE)
+        Vector2 base = new Vector2(3400, 3400);
+        placeSoldierGroup(base.cpy().add(0, 160), 10, enemySoldier);
+        enemyUnits.add(enemyTank.apply(base.cpy().add(120, -40)));
+        enemyUnits.add(enemyTank.apply(base.cpy().add(-120, -40)));
+        enemyBuildings.add(enemyBuild.apply(base.cpy().add(0, 0), BuildingKind.HQ));
+        enemyBuildings.add(enemyBuild.apply(base.cpy().add(160, 0), BuildingKind.DEPOT));
+        enemyBuildings.add(enemyBuild.apply(base.cpy().add(-160, 0), BuildingKind.GARAGE));
+        circleMines(base, 260f, 10);
+    }
+
+    // Coloca N soldados en una pequeña formación alrededor de “center”
+    private void placeSoldierGroup(Vector2 center, int count,
+                                   java.util.function.Function<Vector2, Unit> maker) {
+        int cols = 4;
+        int spacing = 40;
+        for (int i = 0; i < count; i++) {
+            int r = i / cols;
+            int c = i % cols;
+            Vector2 pos = new Vector2(center.x + (c - (cols/2)) * spacing,
+                center.y + (r - 1) * spacing);
+            enemyUnits.add(maker.apply(pos));
+        }
+    }
+
+    // Pone minas en círculo para “defensa” del campamento
+    private void circleMines(Vector2 center, float radius, int count) {
+        for (int i = 0; i < count; i++) {
+            float ang = (float)(2 * Math.PI * i / count);
+            Vector2 p = new Vector2(center.x + radius * (float)Math.cos(ang),
+                center.y + radius * (float)Math.sin(ang));
+            mines.add(new Mine(p));
+        }
+    }
+
 
     @Override public void resize(int w, int h) {
         camera.setToOrtho(false, w, h);

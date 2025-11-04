@@ -65,7 +65,8 @@ public class Bulldozer extends Unit {
             else if (pendingKind == BuildingKind.FORTIN) tex = "building_fortin.png";
             else tex = "building_storage.png"; // DEPOT por defecto
 
-            Building newBuilding = new Building(pendingBuildPos, tex, pendingKind);
+            // jugador => enemy = false
+            Building newBuilding = new Building(pendingBuildPos, tex, pendingKind, false);
             buildListener.onBuildingCreated(newBuilding);
 
             pendingBuildPos = null;
