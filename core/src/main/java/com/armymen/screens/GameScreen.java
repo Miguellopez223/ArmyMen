@@ -30,6 +30,9 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.math.MathUtils;
+import java.util.HashSet;
+
 
 public class GameScreen implements Screen {
 
@@ -59,11 +62,35 @@ public class GameScreen implements Screen {
     private Label plasticLabel;
     private Label modeLabel;
 
-    // Modo simple de acción (evitamos tocar muchas cosas)
-//    private enum ActionMode { NONE, BUILD_STORAGE }
-//    private ActionMode actionMode = ActionMode.NONE;
-    //private enum ActionMode { NONE, BUILD_HQ, BUILD_DEPOT, BUILD_GARAGE, ENQUEUE_HQ_SOLDIER, ENQUEUE_HQ_SWEEPER, ENQUEUE_GAR_TRUCK, ENQUEUE_GAR_TANK }
+    // === HUD extra (estado) ===
+    private Label unitsTitleLabel;
+    private Label totalUnitsLabel;
+    private Label soldierLabel;
+    private Label sweeperLabel;
+    private Label truckLabel;
+    private Label tankLabel;
+    private Label bulldozerLabel;
+
+    private Label queuesTitleLabel;
+    private Label queuesCountLabel;
+    private Label queuesListLabel; // resumen corto de colas
+
     private ActionMode actionMode = ActionMode.NONE;
+
+    // === Mundo grande ===
+    private static final float WORLD_W = 6000f;
+    private static final float WORLD_H = 6000f;
+
+    // Zona segura de “spawn” inicial para no poner minas/pilas muy cerca
+    private static final Vector2 START_POS = new Vector2(700, 450); // zona inicial aprox. tus edificios/unidades
+    private static final float SAFE_RADIUS = 500f;                   // nada peligroso tan cerca
+
+    // Generación aleatoria (puedes ajustar cantidades)
+    private static final int NUM_RANDOM_PILES = 40;   // cantidad de ToyPiles
+    private static final int NUM_RANDOM_MINES = 70;   // cantidad de minas
+    private static final int PILE_MIN_AMOUNT = 80;
+    private static final int PILE_MAX_AMOUNT = 260;
+
 
     // Debe existir en GameScreen:
     private enum ActionMode {
@@ -94,13 +121,12 @@ public class GameScreen implements Screen {
         this.selectedUnits = new Array<>();
         this.resourceManager = new ResourceManager(200); // plástico inicial
 
-        // ======= Minas iniciales (mínimo indispensable) =======
+        // ======= Colecciones =======
         mines = new Array<>();
-        // Colocamos 4-5 minas fijas para probar (puedes mover posiciones a gusto)
-        mines.add(new Mine(new Vector2(650, 300)));
-        mines.add(new Mine(new Vector2(900, 420)));
-        mines.add(new Mine(new Vector2(1100, 360)));
-        mines.add(new Mine(new Vector2(750, 550)));
+        toyPiles = new Array<>();
+
+        // ======= Generación de mundo grande =======
+        generateWorld(); // <-- NUEVO: crea pilas y minas aleatoriamente
 
         // Entidades base
         bulldozer = new Bulldozer(new Vector2(500, 500));
@@ -116,11 +142,6 @@ public class GameScreen implements Screen {
         // Un edificio de ejemplo
         buildings.add(new Building(new Vector2(700, 400), "building_storage.png"));
 
-        // ====== ToyPiles (fuentes de plástico para volquetas) ======
-        toyPiles = new Array<>();
-        toyPiles.add(new ToyPile(new Vector2(500, 250), 120));
-        toyPiles.add(new ToyPile(new Vector2(900, 520), 200));
-        toyPiles.add(new ToyPile(new Vector2(1300, 380), 160));
 
         // Listener de construcción del bulldozer
         Bulldozer.setBuildListener(new Bulldozer.BuildListener() {
@@ -138,9 +159,6 @@ public class GameScreen implements Screen {
         Gdx.input.setInputProcessor(mux);
     }
 
-    // -------------------------------------------------------------------------------------
-    // UI: crea botonera izquierda + indicadores
-    // -------------------------------------------------------------------------------------
     private void createUI() {
         stage = new Stage(new ScreenViewport());
 
@@ -166,14 +184,14 @@ public class GameScreen implements Screen {
         left.add(new Label("Construir", skin)).row();
 
         // Tu botón original: Construir Almacén (depósito simple -50)
-        final TextButton btnBuildStorage = new TextButton("Construir Almacen (-50)", skin);
-        btnBuildStorage.addListener(new ClickListener() {
-            @Override public void clicked(InputEvent event, float x, float y) {
-                actionMode = ActionMode.BUILD_STORAGE;
-                modeLabel.setText("Modo: Construir Almacén (clic IZQ. en el mapa)");
-            }
-        });
-        left.add(btnBuildStorage).row();
+//        final TextButton btnBuildStorage = new TextButton("Construir Almacen (-50)", skin);
+//        btnBuildStorage.addListener(new ClickListener() {
+//            @Override public void clicked(InputEvent event, float x, float y) {
+//                actionMode = ActionMode.BUILD_STORAGE;
+//                modeLabel.setText("Modo: Construir Almacén (clic IZQ. en el mapa)");
+//            }
+//        });
+//        left.add(btnBuildStorage).row();
 
         // Nuevos: HQ / Depósito / Garaje (usan costos de Building)
         final TextButton btnBuildHQ = new TextButton("HQ (-" + com.armymen.entities.Building.COST_HQ + ")", skin);
@@ -185,7 +203,7 @@ public class GameScreen implements Screen {
         });
         left.add(btnBuildHQ).row();
 
-        final TextButton btnBuildDepot = new TextButton("Depósito (-" + com.armymen.entities.Building.COST_DEPOT + ")", skin);
+        final TextButton btnBuildDepot = new TextButton("Deposito (-" + com.armymen.entities.Building.COST_DEPOT + ")", skin);
         btnBuildDepot.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
                 actionMode = ActionMode.BUILD_DEPOT;
@@ -249,14 +267,14 @@ public class GameScreen implements Screen {
         left.add(new Label(" ", skin)).row();
 
         // --- Cancelar modo
-        final TextButton btnCancel = new TextButton("Cancelar modo", skin);
-        btnCancel.addListener(new ClickListener() {
-            @Override public void clicked(InputEvent event, float x, float y) {
-                actionMode = ActionMode.NONE;
-                modeLabel.setText("Modo: Ninguno");
-            }
-        });
-        left.add(btnCancel).row();
+//        final TextButton btnCancel = new TextButton("Cancelar modo", skin);
+//        btnCancel.addListener(new ClickListener() {
+//            @Override public void clicked(InputEvent event, float x, float y) {
+//                actionMode = ActionMode.NONE;
+//                modeLabel.setText("Modo: Ninguno");
+//            }
+//        });
+//        left.add(btnCancel).row();
 
         // ===== Panel superior derecho (indicadores) =====
         Table top = new Table(skin);
@@ -276,6 +294,38 @@ public class GameScreen implements Screen {
         rightCol.add(modeLabel).right().row();
 
         root.add(rightCol).top().right().pad(8);
+
+        // ===== Bloque: Estado (unidades y colas) =====
+        rightCol.row();
+        rightCol.add(new Label(" ", skin)).right().row(); // separador visual
+
+        unitsTitleLabel = new Label("Unidades", skin);
+        rightCol.add(unitsTitleLabel).right().row();
+
+        totalUnitsLabel = new Label("Total: 0", skin);
+        soldierLabel    = new Label("Soldados: 0", skin);
+        sweeperLabel    = new Label("Buscaminas: 0", skin);
+        truckLabel      = new Label("Volquetas: 0", skin);
+        tankLabel       = new Label("Tanques: 0", skin);
+        bulldozerLabel  = new Label("Bulldozers: 0", skin);
+
+        rightCol.add(totalUnitsLabel).right().row();
+        rightCol.add(soldierLabel).right().row();
+        rightCol.add(sweeperLabel).right().row();
+        rightCol.add(truckLabel).right().row();
+        rightCol.add(tankLabel).right().row();
+        rightCol.add(bulldozerLabel).right().row();
+
+        rightCol.row();
+        rightCol.add(new Label(" ", skin)).right().row(); // separador
+
+        queuesTitleLabel = new Label("Colas de producción", skin);
+        queuesCountLabel = new Label("Colas activas: 0", skin);
+        queuesListLabel  = new Label("-", skin);
+
+        rightCol.add(queuesTitleLabel).right().row();
+        rightCol.add(queuesCountLabel).right().row();
+        rightCol.add(queuesListLabel).right().row();
     }
 
     @Override
@@ -408,6 +458,53 @@ public class GameScreen implements Screen {
         // HUD
         plasticLabel.setText("Plástico: " + resourceManager.getPlastic());
 
+        // === Conteo de unidades por tipo ===
+        int cSoldier = 0, cSweeper = 0, cTruck = 0, cTank = 0, cBulldozer = 0;
+        for (int i = 0; i < playerUnits.size; i++) {
+            Unit u = playerUnits.get(i);
+            String tag = u.getTag();
+            if ("SOLDIER".equals(tag)) cSoldier++;
+            else if ("MINESWEEPER".equals(tag)) cSweeper++;
+            else if ("TRUCK".equals(tag)) cTruck++;
+            else if ("TANK".equals(tag)) cTank++;
+            else if ("BULLDOZER".equals(tag)) cBulldozer++;
+        }
+        int totalUnits = playerUnits.size;
+
+        totalUnitsLabel.setText("Total: " + totalUnits);
+        soldierLabel.setText("Soldados: " + cSoldier);
+        sweeperLabel.setText("Buscaminas: " + cSweeper);
+        truckLabel.setText("Volquetas: " + cTruck);
+        tankLabel.setText("Tanques: " + cTank);
+        bulldozerLabel.setText("Bulldozers: " + cBulldozer);
+
+// === Resumen de colas de producción ===
+        int activeQueues = 0;
+        int totalOrders = 0;
+        StringBuilder sb = new StringBuilder(); // ejemplo: HQ#1[2], GARAGE#1[1], HQ#2[1]
+
+        int hqIdx = 0, garIdx = 0, depIdx = 0;
+        for (int i = 0; i < buildings.size; i++) {
+            Building b = buildings.get(i);
+            if (!b.hasQueue()) continue;
+            int sz = b.getQueue().size();
+            if (sz <= 0) continue;
+
+            activeQueues++;
+            totalOrders += sz;
+
+            // Etiquetado simple por tipo
+            String tag;
+            if (b.getKind() == BuildingKind.HQ) tag = "HQ#" + (++hqIdx);
+            else if (b.getKind() == BuildingKind.GARAGE) tag = "GARAGE#" + (++garIdx);
+            else tag = "DEPOT#" + (++depIdx);
+
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(tag).append("[").append(sz).append("]");
+        }
+        queuesCountLabel.setText("Colas activas: " + activeQueues + " (órdenes: " + totalOrders + ")");
+        queuesListLabel.setText(sb.length() == 0 ? "-" : sb.toString());
+
         // Edificios (incluye ingreso pasivo del DEPOT y colas de HQ/GARAGE)
         for (Building b : buildings) {
             b.update(delta, playerUnits, resourceManager);
@@ -529,20 +626,24 @@ public class GameScreen implements Screen {
     }
 
     private void handleCamera(float delta) {
-        float speed = 400 * delta;
+        float baseSpeed = 700;
+        if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT))
+            baseSpeed = 1100; // boost temporal
+
+        float speed = baseSpeed * delta;
+
         if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) camera.position.y += speed;
         if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) camera.position.y -= speed;
         if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) camera.position.x -= speed;
         if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) camera.position.x += speed;
 
-        // Límites del mapa
-        float MAP_WIDTH = 2000, MAP_HEIGHT = 2000;
+        // Límites del mapa grande
         float halfW = camera.viewportWidth / 2f, halfH = camera.viewportHeight / 2f;
 
         if (camera.position.x < halfW) camera.position.x = halfW;
         if (camera.position.y < halfH) camera.position.y = halfH;
-        if (camera.position.x > MAP_WIDTH - halfW) camera.position.x = MAP_WIDTH - halfW;
-        if (camera.position.y > MAP_HEIGHT - halfH) camera.position.y = MAP_HEIGHT - halfH;
+        if (camera.position.x > WORLD_W - halfW) camera.position.x = WORLD_W - halfW;
+        if (camera.position.y > WORLD_H - halfH) camera.position.y = WORLD_H - halfH;
 
         camera.update();
     }
@@ -559,6 +660,65 @@ public class GameScreen implements Screen {
         Vector3 tmp = new Vector3(x, y, 0);
         camera.unproject(tmp);
         return new Vector2(tmp.x, tmp.y);
+    }
+
+    /** Genera ToyPiles y Mines aleatoriamente evitando la zona inicial. */
+    private void generateWorld() {
+        // Para evitar superposiciones “feas” entre objetos cercanos, guardamos celdas ocupadas muy groseramente
+        HashSet<Long> usedCells = new HashSet<>();
+        final float CELL = 64f; // grilla grosera para espaciar un poco
+
+        // Helper: genera un punto random con margen y lejos del START_POS
+        java.util.function.Supplier<Vector2> rndPoint = () -> {
+            float margin = 80f; // evita bordes
+            float x = MathUtils.random(margin, WORLD_W - margin);
+            float y = MathUtils.random(margin, WORLD_H - margin);
+            return new Vector2(x, y);
+        };
+
+        // Helper: celda discreta para espaciar
+        java.util.function.Function<Vector2, Long> cellKey = (v) -> {
+            int cx = MathUtils.floor(v.x / CELL);
+            int cy = MathUtils.floor(v.y / CELL);
+            return (((long) cx) << 32) | (cy & 0xffffffffL);
+        };
+
+        // 1) Generar ToyPiles
+        int createdPiles = 0;
+        int guard = 0;
+        while (createdPiles < NUM_RANDOM_PILES && guard++ < NUM_RANDOM_PILES * 50) {
+            Vector2 p = rndPoint.get();
+            if (p.dst2(START_POS) < SAFE_RADIUS * SAFE_RADIUS) continue; // lejos del spawn
+            Long key = cellKey.apply(p);
+            if (usedCells.contains(key)) continue;
+            usedCells.add(key);
+
+            int amount = MathUtils.random(PILE_MIN_AMOUNT, PILE_MAX_AMOUNT);
+            toyPiles.add(new ToyPile(p, amount));
+            createdPiles++;
+        }
+
+        // 2) Generar Mines
+        int createdMines = 0;
+        guard = 0;
+        while (createdMines < NUM_RANDOM_MINES && guard++ < NUM_RANDOM_MINES * 50) {
+            Vector2 p = rndPoint.get();
+            if (p.dst2(START_POS) < SAFE_RADIUS * SAFE_RADIUS) continue; // no minas en inicio
+            Long key = cellKey.apply(p);
+            if (usedCells.contains(key)) continue;
+            usedCells.add(key);
+
+            mines.add(new Mine(p));
+            createdMines++;
+        }
+
+        // BONUS: deja unas pocas pilas cerca (pero fuera del SAFE_RADIUS) para empezar rápido
+        for (int i = 0; i < 3; i++) {
+            Vector2 dir = new Vector2(MathUtils.random(-1f, 1f), MathUtils.random(-1f, 1f)).nor();
+            Vector2 p = new Vector2(START_POS).mulAdd(dir, SAFE_RADIUS + MathUtils.random(70f, 200f));
+            int amount = MathUtils.random(120, 220);
+            toyPiles.add(new ToyPile(p, amount));
+        }
     }
 
     @Override public void resize(int w, int h) {
